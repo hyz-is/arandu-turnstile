@@ -162,6 +162,30 @@ func TestATokenSolvedElsewhereIsRefused(t *testing.T) {
 	}
 }
 
+// Cloudflare's answer to its published test secret key carries the hostname
+// example.com and no action, so a development machine that is held to its own
+// hostname and to the action of the form is refused on every submission.
+func TestATestSecretKeyIsNotHeldToTheHostnameOrTheAction(t *testing.T) {
+	t.Parallel()
+	const testingAnswer = `{"success":true,"challenge_ts":"2026-10-25T12:00:00.000Z","hostname":"example.com","error-codes":[],"metadata":{"result_with_testing_key":true}}`
+	s := newSiteverify(t, answering(testingAnswer))
+
+	cfg := turnstile.Config{SiteKey: turnstile.TestSiteKey, SecretKey: turnstile.TestSecretKey, Hostnames: []string{"localhost"}, Endpoint: s.server.URL, Client: s.server.Client()}
+	v, err := turnstile.New(cfg)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if _, err := v.Verify(context.Background(), turnstile.Challenge{Token: turnstile.TestToken, Action: "login"}); err != nil {
+		t.Errorf("the test secret key was held to a hostname and an action Cloudflare does not answer: %v", err)
+	}
+
+	// The exemption is the published keys', not whatever an answer claims.
+	production := s.verifier(t, turnstile.Config{Hostnames: []string{"localhost"}})
+	if _, err := production.Verify(context.Background(), turnstile.Challenge{Token: "token", Action: "login"}); !errors.Is(err, turnstile.ErrRejected) {
+		t.Errorf("another secret key was exempted from the hostname and the action: err = %v, want ErrRejected", err)
+	}
+}
+
 func TestAnAddressThatIsNotOneIsNotSent(t *testing.T) {
 	t.Parallel()
 	s := newSiteverify(t, answering(accepted))

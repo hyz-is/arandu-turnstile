@@ -10,6 +10,17 @@ a release is corrected by another release and never by moving a tag.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-25
+
+### Fixed
+
+- `Verify` no longer holds the answer to a published test secret key
+  (`TestSecretKey` and the two others) to `Config.Hostnames` or to the action
+  the form expects. Cloudflare answers those keys with the hostname
+  `example.com` and no action, so a development machine configured with the
+  test keys was refused on every submission. A secret key that is not one of
+  the three is held to both, as before.
+
 ## [0.1.0] - 2026-10-25
 
 ### Added

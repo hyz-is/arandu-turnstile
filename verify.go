@@ -183,6 +183,15 @@ func (v *Verifier) Verify(ctx context.Context, c Challenge) (Result, error) {
 	if !answer.Success {
 		return result, refusal(answer.ErrorCodes)
 	}
+	// Cloudflare answers a test secret key with a fixed result: the hostname is
+	// example.com and there is no action, whatever the page drew. Holding that
+	// answer to the configured hostnames and to the expected action would
+	// refuse every submission of a development machine, so a test secret is
+	// held to neither. Only a published test key is exempt, and Config says
+	// what a deployment that uses one is worth.
+	if isTestSecret(v.secretKey) {
+		return result, nil
+	}
 	if len(v.hostnames) > 0 && !slices.Contains(v.hostnames, strings.ToLower(answer.Hostname)) {
 		return result, fmt.Errorf("%w: it was solved on %q, which is not one of the configured hostnames", ErrRejected, answer.Hostname)
 	}
@@ -190,6 +199,12 @@ func (v *Verifier) Verify(ctx context.Context, c Challenge) (Result, error) {
 		return result, fmt.Errorf("%w: it was solved for the action %q, not %q", ErrRejected, answer.Action, c.Action)
 	}
 	return result, nil
+}
+
+// isTestSecret reports whether the secret key is one of the three Cloudflare
+// publishes for development and tests.
+func isTestSecret(secret string) bool {
+	return secret == TestSecretKey || secret == TestSecretKeyFails || secret == TestSecretKeySpent
 }
 
 // refusal maps Cloudflare's error codes to the reason a caller acts on.
