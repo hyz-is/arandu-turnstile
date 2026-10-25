@@ -10,6 +10,13 @@ a release is corrected by another release and never by moving a tag.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-25
+
+### Changed
+
+- Requires Hesape v0.86.0 (it was v0.85.0) and Kyse v0.44.0. No code changed,
+  and the suite is green on both.
+
 ## [0.1.2] - 2026-10-25
 
 ### Changed

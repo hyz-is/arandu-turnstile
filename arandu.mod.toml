@@ -5,10 +5,10 @@
 # compares these four lines with what the code calls.
 
 name = "hyz-is/turnstile"
-# This package imports no framework package; it requires Hesape v0.85.0, and
-# Framework v0.66.0 is the first release built on that Hesape. An application
-# on an older Framework would have its Hesape raised past the one it was built
-# with by installing this.
+# This package imports no framework package; it requires Hesape v0.86.0.
+# Framework v0.66.0, the newest release, is built on Hesape v0.85.0, so an
+# application on it has its Hesape raised one minor by installing this; no
+# Framework release is built on v0.86.0 yet, and the floor moves when one is.
 framework = ">= 0.66"
 profiles = ["conventional", "performance"]
 

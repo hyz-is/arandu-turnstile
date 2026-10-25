@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.1.3
+
+Nothing to change. An application on Framework v0.66.0 has its Hesape raised
+from v0.85.0 to v0.86.0 by installing this, which Hesape v0.86.0 documents as
+changing nothing that compiled or ran.
+
 ## v0.1.2
 
 Nothing to change in the code. An application that reads the token with
