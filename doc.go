@@ -20,8 +20,15 @@
 //		SiteKey: .TurnstileSiteKey, Action: "signup", Page: .,
 //	}) !!}
 //
-//	// handler: the token is checked before anything else is done.
-//	if err := captcha.Check(ctx.Ctx(), ctx.Input(turnstile.FieldName), ctx.IP(), "signup"); err != nil {
+//	// handler: the token is read like any other field, and checked before
+//	// anything else is done.
+//	var challenge struct {
+//		Token string `form:"cf-turnstile-response"` // turnstile.FieldName
+//	}
+//	if err := ctx.Bind(&challenge); err != nil {
+//		return err
+//	}
+//	if err := captcha.Check(ctx.Ctx(), challenge.Token, ctx.IP(), "signup"); err != nil {
 //		return err
 //	}
 //

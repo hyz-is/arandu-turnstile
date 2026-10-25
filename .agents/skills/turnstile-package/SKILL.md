@@ -95,14 +95,26 @@ Run `aru view:build` afterwards.
 ## 5. The check, in the handler
 
 ```go
-if err := captcha.Check(ctx.Ctx(), ctx.Input(turnstile.FieldName), ctx.IP(), "signup"); err != nil {
+// The field the widget writes into the form. The tag is the value of
+// turnstile.FieldName.
+type challengeRequest struct {
+	Token string `form:"cf-turnstile-response"`
+}
+
+var challenge challengeRequest
+if err := ctx.Bind(&challenge); err != nil {
+	return err
+}
+if err := captcha.Check(ctx.Ctx(), challenge.Token, ctx.IP(), "signup"); err != nil {
 	return err
 }
 ```
 
-Here `turnstile` is the root package, `github.com/hyz-is/arandu-turnstile`. It
-is the first thing the handler does with the submission, before validation of
-the other fields, and it is done once: a token is spent by verifying it.
+Here `turnstile` is the root package, `github.com/hyz-is/arandu-turnstile`. The
+token is read with `ctx.Bind` like every other field: `aru doctor` reports a
+field read with `ctx.Input` as `input-read-by-hand`. The check is the first
+thing the handler does with the submission, before validation of the other
+fields, and it is done once: a token is spent by verifying it.
 
 A refusal returns `validation.Errors` under `turnstile.FieldName`, and returning
 it sends the visitor back to the form with the message. An outage at Cloudflare

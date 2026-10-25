@@ -93,13 +93,26 @@ Run `aru view:build` after installing, as for any component.
 In the handler, before anything else is done with the submission:
 
 ```go
+// challengeRequest is the field the widget writes into the form.
+type challengeRequest struct {
+	Token string `form:"cf-turnstile-response"` // turnstile.FieldName
+}
+
 func (c *AccountController) Store(ctx *http.Context) error {
-	if err := captcha.Check(ctx.Ctx(), ctx.Input(turnstile.FieldName), ctx.IP(), "signup"); err != nil {
+	var challenge challengeRequest
+	if err := ctx.Bind(&challenge); err != nil {
+		return err
+	}
+	if err := captcha.Check(ctx.Ctx(), challenge.Token, ctx.IP(), "signup"); err != nil {
 		return err
 	}
 	// ...
 }
 ```
+
+The token is read with `ctx.Bind` into a struct, like every other field:
+`aru doctor` flags a field read by hand with `ctx.Input`. The tag has to be the
+value of `turnstile.FieldName`.
 
 `Check` returns `nil`, or `validation.Errors` under `turnstile.FieldName`,
 which sends the visitor back to the form with the message. It fails closed: a

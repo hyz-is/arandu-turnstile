@@ -10,6 +10,15 @@ a release is corrected by another release and never by moving a tag.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-25
+
+### Changed
+
+- The documentation, the package skill and the example in the package comment
+  read the token with `ctx.Bind` into a struct instead of `ctx.Input`, because
+  `aru doctor` reports a field read by hand as `input-read-by-hand` in the
+  application that followed them. No code changed.
+
 ## [0.1.1] - 2026-10-25
 
 ### Fixed
