@@ -4,65 +4,50 @@ Thank you for considering a contribution.
 
 ## Before you open a pull request
 
-Run the four gates. They are what CI runs, and a pull request that fails one of
+Run the five gates. They are what CI runs, and a pull request that fails one of
 them fails for everybody who pulls after it.
 
 ```bash
+export GOWORK=off
+aru view:build
 gofmt -l $(find . -name '*.go' -not -path '*/testdata/*' -not -name '*.kyse.go')
 go build ./...
 go vet ./...
 go test -race ./...
 ```
 
+A change to `components/widget.kyse.go` is committed with the `widget.go` that
+`aru view:build` writes from it. The compiled file is what installers import.
+
 The two filters on `gofmt` are not preference. `gofmt` is the only tool in the
 chain that ignores build tags, so it reads files the compiler deliberately
 excludes; `testdata/` holds fixtures that are invalid on purpose.
 
-A change to the entity in `model.go` is followed by `aru model:build`, which
-rewrites `TurnstileQuery.go`, and the regenerated file goes in the same commit.
-`aru model:build --check` exits 1 when the committed file is missing, stale or
-edited by hand.
-
 ## What a change has to keep true
 
-Four properties are the reason this package is what it is. A change that breaks
-one of them will not be merged, whatever else it improves.
+1. **It fails closed.** No path lets a submission through without Cloudflare
+   accepting its token for the expected hostname and action, including when
+   Cloudflare does not answer.
+2. **The token is verified once, by the handler.** Nothing in the package
+   verifies a token before the code that acts on the submission asks.
+3. **The secret key stays on the server.** It goes into the verification
+   request and nowhere else.
+4. **The page keeps its policy.** The behaviour runs from this origin with no
+   inline script and no evaluated string, Cloudflare's script is loaded from
+   Cloudflare, and the policy is widened only on the routes that draw the
+   widget.
+5. **This stays a library.** No route, no table, no policy, no `Module`, no
+   import outside the list in `TestThePackageIsALibrary`, and an `init` that
+   only registers the script.
+6. **`arandu.mod.toml` matches the code.** A new destination, a file access or a
+   process is declared there in the same commit.
 
-1. **The policy denies by default.** No branch allows every action, and none is
-   added. Opening an action means writing the rule that opens it.
-2. **Every Service method authorizes before reaching the Model.** The Grant is
-   then required by the Model terminal; constructing `Turnstiles(db)` first is
-   already the wrong order and the structural audit rejects it.
-3. **The tenant comes from `data.Tenant(g)`.** Not from the path, the body, the
-   query string or a header, on any code path, including the read paths.
-4. **`arandu.mod.toml` matches the code.** Adding an outbound call, a file
-   write or a process means declaring it there in the same commit.
-
-CRUD stays on `Turnstiles(db)` and its generated query. Add a Repository only for
-a specialized complex query, read model, report, export or raw SQL contract; a
-wrapper around `Find`, `Get`, `Save` or `Delete` is a second data path.
-
-Every query starts at `Turnstiles(s.db)`. The constructor returns one mutable
-query, so a second chain begun from a value held in a variable carries the
-clauses of the first -- and that compiles.
-
-Model-backed entities stay pointers. A copy of `Turnstile` keeps the model of the
-row it was copied from, and the model refuses to write through the copy with
-`model.ErrUnwired`. Response resources are the deliberate snapshot boundary;
-Service results are not.
-
-The rules of the entity itself go in the custom block of `model.go`, as pure
-methods. The Service orchestrates, and holds no rule the entity could hold.
-
-Handlers read who is asking with `ctx.User()`, which `RequireAuth` filled, and
-return the error the Service returned for the router to answer. A handler that
-loads the session or maps an error to a status fails
-`TestHandlersLeaveTheSubjectAndTheStatusToTheFramework`.
+No test calls Cloudflare. The endpoint is a local TLS server.
 
 ## Style
 
 Everything in the source is in English: identifiers, doc comments, internal
-comments, error messages, log messages, and the names and messages of tests.
+comments, error messages, the script, and the names and messages of tests.
 `pkg.go.dev` publishes the doc comments, and its readers are users of this
 package.
 

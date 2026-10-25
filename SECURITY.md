@@ -2,9 +2,9 @@
 
 ## Supported versions
 
-The latest minor release of Arandu Turnstile receives security fixes. Older minor
-releases do not: a published Go module version is immutable, so a fix is a new
-release rather than a moved tag.
+The latest minor release of Arandu Turnstile receives security fixes. Older
+minor releases do not: a published Go module version is immutable, so a fix is
+a new release rather than a moved tag.
 
 ## Reporting a vulnerability
 
@@ -16,8 +16,9 @@ Do not open a public issue and do not describe the problem in a pull request.
 A report that arrives in public is a report every reader of this repository can
 act on before there is a release to upgrade to.
 
-Include what you need to reproduce it: the version, the wiring, and the request
-or call that triggers it.
+Include what you need to reproduce it: the version, the answer from Cloudflare
+or the request that triggers it. Never a real secret key: a test key shows the
+same defect.
 
 Expect an acknowledgement within a few days. If the report is confirmed, the
 fix, the release and the advisory are published together, and you are credited
@@ -25,21 +26,24 @@ unless you ask not to be.
 
 ## What is in scope
 
-Anything that lets a caller reach data a policy did not authorize. In
-particular:
+Anything that lets a submission through that Cloudflare did not accept, or that
+exposes what the package keeps on the server. In particular:
 
-- a path from a handler to a Model or database handle that does not pass through
-  the Service and its Policy;
-- a route reachable without `RequireAuth`, or a handler that takes who is
-  asking from anywhere but the subject the guard put on the request;
-- a Model terminal reached before `security.Authorize`;
-- a query whose tenant scope is disabled, or a tenant taken from anywhere but
-  `data.Tenant(g)`;
-- a `Grant` that can be produced without a policy returning nil;
-- a field reaching a response that `Resource` does not list.
+- `Verify` or `Check` returning success for a token that is missing, refused,
+  spent, solved on another hostname than the configured ones, or solved for
+  another action than the one expected;
+- `Check` returning `nil` while Cloudflare cannot be reached;
+- the secret key reaching a page, an error, a log line or a formatted `Config`;
+- the component writing unescaped input into the page, or the behaviour
+  evaluating anything the page carries;
+- `Policy` or `Headers` widening a directive other than `script-src` and
+  `frame-src`, or adding an origin other than Cloudflare's;
+- a panic on any input, from any exported function.
 
 ## What is not
 
-- A vulnerability in the framework itself. Report that to the framework.
-- A policy that is too permissive in an application that opened it. What this
-  package ships denies everything; what an application opens is its own.
+- A person passing the challenge with help, or a service that solves it for
+  pay. Turnstile raises the cost of automation; it does not prove identity.
+- A vulnerability in Cloudflare's widget or endpoint. Report that to
+  Cloudflare.
+- A vulnerability in Hesape or kyse. Report that to them.

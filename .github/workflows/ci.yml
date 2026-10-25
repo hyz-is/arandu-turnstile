@@ -48,6 +48,20 @@ jobs:
       - name: test
         run: go test -race ./...
 
+      # The compiled component is committed, and a stale one ships.
+      #
+      # go get has no build step to run, so what is in the repository is what
+      # every project imports. This rebuilds it and fails if the tree moved.
+      - name: the compiled component is the one in the tree
+        run: |
+          go install github.com/arandu-io/aru@latest
+          "$(go env GOPATH)/bin/aru" view:build
+          if [ -n "$(git status --porcelain components)" ]; then
+            echo "the committed component does not match its source:"
+            git --no-pager diff --stat components
+            exit 1
+          fi
+
       # A v0 release may break, but every break must tell an installer exactly
       # what to replace. Module mode also sees a deleted package or type that a
       # loop over the current package list would miss.

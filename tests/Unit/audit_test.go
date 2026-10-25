@@ -3,7 +3,6 @@ package unit_test
 import (
 	"go/ast"
 	"go/build/constraint"
-	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,32 +15,19 @@ import (
 // own tree, skips vendor/, reads the one arandu.mod.toml at its root, and
 // refuses a directory that is not an application at all. It never loads a
 // dependency. So nothing an installed package does is audited by the
-// application that installed it: a package that reached a table without a
-// Grant, took a tenant out of a request, or declared no capabilities and then
-// opened a socket would pass every check the installer runs.
+// application that installed it: a package that declared no capabilities and
+// then opened a socket would pass every check the installer runs.
 //
 // The package is therefore the only place that check can happen, and this is
-// it. These tests read this package's own Go files as syntax and hold four
-// properties:
-//
-//  1. every exported Service method calls Authorize before it reaches the
-//     generated query;
-//  2. the tenant comes from the Grant, and nothing a request carried is read as
-//     one;
-//  3. the Model remains tenant-scoped and CRUD does not grow a second data path;
-//  4. what arandu.mod.toml declares is what the code does.
-//
-// The fifth is held where the routes exist rather than here, because a prefix
-// arrives through configuration and syntax cannot follow it:
-// TestNoRouteLandsInTheFrameworkNamespace, in tests/Feature/routes_test.go,
-// registers the module and reads the table back.
+// it. This file reads the package's own Go files as syntax and holds one
+// property: what arandu.mod.toml declares is what the code does. The shape of
+// a library -- no route, no table, no policy, no framework import -- is held in
+// structure_test.go.
 //
 // What these tests do not reach is worth as much as what they do. They read
-// syntax: a call hidden behind an interface, a wrapper around the named Model
-// entry point, and anything reached by reflection are all invisible to them. A
-// green run means no such thing was found written down, not that none exists.
-// What is absolute is what the compiler holds alongside them -- a Model terminal
-// with no Grant in its call does not compile.
+// syntax: a call hidden behind an interface and anything reached by reflection
+// are invisible to them. A green run means no such thing was found written
+// down, not that none exists.
 
 // buildable reports whether the compiler ever reads this file.
 //
@@ -103,187 +89,6 @@ func auditedFiles(t *testing.T) []parsedGoFile {
 		t.Fatal("no buildable Go file was found, so everything below would pass by having nothing to read")
 	}
 	return out
-}
-
-// selectorName is the trailing name of a selector, or the name of an
-// identifier.
-func selectorName(expression ast.Expr) string {
-	switch expression := expression.(type) {
-	case *ast.SelectorExpr:
-		return expression.Sel.Name
-	case *ast.Ident:
-		return expression.Name
-	}
-	return ""
-}
-
-// calledName is the trailing name of whatever a call names, so a call can be
-// recognised without resolving what it is called on.
-func calledName(call *ast.CallExpr) string {
-	return selectorName(call.Fun)
-}
-
-// firstCallTo is where a body first calls something by this name.
-func firstCallTo(body *ast.BlockStmt, name string) token.Pos {
-	found := token.NoPos
-	ast.Inspect(body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok || calledName(call) != name {
-			return true
-		}
-		if found == token.NoPos || call.Pos() < found {
-			found = call.Pos()
-		}
-		return true
-	})
-	return found
-}
-
-// TestEveryServiceMethodAuthorizesBeforeTheModel holds the mandatory path on
-// every exported use case rather than on the three that exist today.
-//
-// A nil-database denial test proves the closed path. This syntax audit is its
-// twin for an allowed path: Model construction is visible in the method body,
-// and moving it above Authorize fails even when no terminal is executed.
-func TestEveryServiceMethodAuthorizesBeforeTheModel(t *testing.T) {
-	t.Parallel()
-
-	audited := 0
-	for _, source := range auditedFiles(t) {
-		for _, declaration := range source.file.Decls {
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Body == nil || receiverType(function) != "TurnstileService" ||
-				!function.Name.IsExported() {
-				continue
-			}
-			audited++
-
-			decided := firstCallTo(function.Body, "Authorize")
-			reach := firstModelReach(function.Body)
-			if decided == token.NoPos {
-				t.Errorf("%s: %s never calls security.Authorize, so no Policy decided whether the Model may run",
-					source.path, function.Name.Name)
-			}
-			if reach == token.NoPos {
-				t.Errorf("%s: %s never reaches the generated query, so this audit found no data boundary to order",
-					source.path, function.Name.Name)
-			}
-			if decided != token.NoPos && reach != token.NoPos && decided > reach {
-				t.Errorf("%s: %s reaches the Model before security.Authorize",
-					source.path, function.Name.Name)
-			}
-		}
-	}
-	if audited == 0 {
-		t.Fatal("no exported TurnstileService method was found, so this test proved nothing")
-	}
-}
-
-// firstModelReach is where a Service first constructs the generated query or
-// calls a promoted write terminal. Turnstiles itself counts: moving only its
-// construction before Authorize is the mutation this audit exists to reject.
-func firstModelReach(body *ast.BlockStmt) token.Pos {
-	terminals := map[string]bool{
-		"Save": true, "Delete": true, "Restore": true, "Touch": true,
-	}
-	found := token.NoPos
-	ast.Inspect(body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		name := calledName(call)
-		if name != "Turnstiles" && !terminals[name] {
-			return true
-		}
-		if found == token.NoPos || call.Pos() < found {
-			found = call.Pos()
-		}
-		return true
-	})
-	return found
-}
-
-// requestAccessors are the ways a value that arrived with the request is read.
-// A tenant taken through any of them is a tenant the caller chose.
-var requestAccessors = map[string]bool{
-	"Param":         true,
-	"Query":         true,
-	"Input":         true,
-	"FormValue":     true,
-	"PostFormValue": true,
-	"PathValue":     true,
-	"Cookie":        true,
-	"Get":           true,
-}
-
-// TestNoTenantIsReadOutOfTheRequest is the rule with no exception in it. A
-// tenant the client can name is a client who chooses whose rows they read, and
-// every other check in the package passes while it happens.
-func TestNoTenantIsReadOutOfTheRequest(t *testing.T) {
-	t.Parallel()
-
-	for _, source := range auditedFiles(t) {
-		ast.Inspect(source.file, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || !requestAccessors[selector.Sel.Name] {
-				return true
-			}
-			for _, argument := range call.Args {
-				literal, ok := argument.(*ast.BasicLit)
-				if !ok || literal.Kind != token.STRING {
-					continue
-				}
-				if strings.Contains(strings.ToLower(literal.Value), "tenant") {
-					t.Errorf("%s: %s(%s) reads a tenant out of the request; it comes from the Grant, which came from the session",
-						source.path, selector.Sel.Name, literal.Value)
-				}
-			}
-			return true
-		})
-	}
-}
-
-// TestTheServiceWritesTenantOnlyFromTheGrant holds the write half of tenant
-// isolation. The proposed value is policy input; the value persisted after
-// Authorize must take TenantID directly from data.Tenant(g).
-func TestTheServiceWritesTenantOnlyFromTheGrant(t *testing.T) {
-	t.Parallel()
-
-	audited := 0
-	for _, source := range auditedFiles(t) {
-		for _, declaration := range source.file.Decls {
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Body == nil || receiverType(function) != "TurnstileService" {
-				continue
-			}
-			ast.Inspect(function.Body, func(node ast.Node) bool {
-				assignment, ok := node.(*ast.AssignStmt)
-				if !ok {
-					return true
-				}
-				for i, target := range assignment.Lhs {
-					if i >= len(assignment.Rhs) || selectorName(target) != "TenantID" {
-						continue
-					}
-					audited++
-					call, ok := assignment.Rhs[i].(*ast.CallExpr)
-					if !ok || calledName(call) != "Tenant" {
-						t.Errorf("%s: %s writes TenantID from something other than data.Tenant(g)",
-							source.path, function.Name.Name)
-					}
-				}
-				return true
-			})
-		}
-	}
-	if audited == 0 {
-		t.Fatal("no Service tenant assignment was found, so this test proved nothing")
-	}
 }
 
 // capabilities is what arandu.mod.toml declares, and what the code does, under

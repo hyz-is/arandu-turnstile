@@ -1,6 +1,6 @@
 ---
 name: turnstile-package
-description: Install, wire and use the Arandu Turnstile package (Go, Arandu) in an application. Use when the request is to "install Arandu Turnstile", "add turnstile to the app", "go get github.com/hyz-is/arandu-turnstile", "wire it into bootstrap/app.go", "register the module", "use the turnstile routes", "everything under /turnstile returns 403", "403 forbidden from turnstile", "it redirects to /auth/login", "the table does not exist", "no such table", "change where it is mounted", "let admins read it", or when a project's go.mod already requires github.com/hyz-is/arandu-turnstile. Covers the three lines of wiring and where each one goes, the Config fields, none of them required, the routes, their names and the session they need, why the policy refuses everything until somebody opens it, and the migration step that is not optional.
+description: Install, wire and use Arandu Turnstile (Cloudflare Turnstile, the anti-bot challenge) in an Arandu application. Use when the request is to "add a captcha", "add Turnstile", "protect the sign-up form from bots", "anti-robot check", "go get github.com/hyz-is/arandu-turnstile", "the widget does not appear", "Refused to load the script challenges.cloudflare.com", "Content Security Policy blocks Turnstile", "the form always says confirm that you are not a robot", "timeout-or-duplicate", "the widget works on refresh but not after clicking a link", or when a project's go.mod already requires github.com/hyz-is/arandu-turnstile. Covers the keys, the Verifier in bootstrap/app.go, the Headers middleware on the routes that draw the widget, the Widget component in the view, the Check call in the handler, the test keys, and the symptoms of each missing piece.
 license: MIT
 metadata:
   audience: app
@@ -8,177 +8,122 @@ metadata:
 
 # Using Arandu Turnstile
 
-An Arandu package with one entity, its own table, its own routes and its own
-policy. It is registered by hand — there is no service provider, no container
-and no discovery, so if a line is not written in the application, it does not
-happen.
+Four pieces, each one a line somebody writes. A missing piece has a symptom, and
+the table at the end maps each symptom to the piece.
 
-## Install
+## 1. The keys
 
-```bash
-go get github.com/hyz-is/arandu-turnstile
+A widget in the Cloudflare dashboard (Turnstile, Add widget) for the
+application's hostnames gives a site key, which is public, and a secret key,
+which is not. They go in `.env` and in the deployment's secrets, never in the
+repository:
+
+```dotenv
+TURNSTILE_SITE_KEY=0x4AAAAAAA...
+TURNSTILE_SECRET_KEY=0x4AAAAAAA...
 ```
 
-## The three lines of wiring, and where each one goes
+The application's config reads them like any other setting. For local
+development and test suites, use Cloudflare's published keys, which work on
+`localhost` and always pass: `turnstile.TestSiteKey` and
+`turnstile.TestSecretKey`. A production deployment with the test secret
+accepts every submission, so they never reach production.
 
-All three are in `bootstrap/app.go`. Nothing else in the application changes,
-and `aru make:module` does not edit this file for you.
+## 2. The Verifier, in bootstrap/app.go
 
-The import, with the other module imports:
+One for the application, built where the other collaborators are built:
 
 ```go
-import (
-	turnstile "github.com/hyz-is/arandu-turnstile"
-)
+captcha, err := turnstile.New(turnstile.Config{
+	SiteKey:   cfg.Turnstile.SiteKey,
+	SecretKey: cfg.Turnstile.SecretKey,
+	Messages: turnstile.Messages{
+		Rejected:    "Confirme que você não é um robô e envie o formulário de novo.",
+		Unavailable: "Não conseguimos confirmar que você não é um robô. Aguarde um instante e envie de novo.",
+	},
+})
+if err != nil {
+	return nil, err
+}
 ```
 
-The construction, in `Build`, after the session store exists and before
-`k.Register`:
+`New` refuses an empty key, so a deployment without the keys fails at boot. The
+Verifier is handed to the controllers that check a form, as a constructor
+parameter, like any other collaborator.
+
+## 3. The routes that draw the widget
 
 ```go
-	turnstileModule, err := turnstile.New(turnstile.Config{}, db, sessions)
-	if err != nil {
-		return App{}, err
-	}
+r = r.Group("", turnstile.Headers(middleware.DefaultContentSecurityPolicy()))
 ```
 
-And the registration, inside the `k.Register(...)` call already there:
+`middleware` is `github.com/arandu-io/hesape/http/middleware`. Pass the policy
+the rest of the application sends: if `bootstrap/app.go` configures image
+origins, pass the same ones to `DefaultContentSecurityPolicy`.
+
+Wrap the GET of every page that draws the widget, and only those. The
+middleware adds `https://challenges.cloudflare.com` to `script-src` and
+`frame-src`, and answers a boosted navigation with `HX-Redirect` so the page is
+loaded with its own policy: the layout's `hx-boost` swaps the body and keeps
+the policy of the page the link was on.
+
+A widget inside a fragment loaded by `hx-get` into another page needs the page
+it lands in to carry the policy too. Wrap that page's route as well.
+
+## 4. The component, in the view
 
 ```go
-		turnstileModule,
+import turnstile "github.com/hyz-is/arandu-turnstile/components"
 ```
 
-`New` returns an error rather than starting half-wired. It refuses a
-configuration that cannot work, a nil database handle and a nil session store,
-so a wiring mistake costs one restart instead of arriving as a nil dereference
-on the first request that needed it.
-
-## Then run the migrations
-
-```bash
-aru migrate
+```html
+{!! turnstile.Widget(turnstile.WidgetProps{
+	SiteKey: .TurnstileSiteKey,
+	Action:  "signup",
+	Page:    .,
+}) !!}
 ```
 
-Not optional, and not automatic. The package owns a table, which is why its
-`arandu.mod.toml` declares `migrations = true` — that declaration is how an
-installer finds out before deploying rather than from the first request.
+It goes inside the `<form>`. The handler of the page puts `captcha.SiteKey()` in
+the page data. `Action` names what the form does, up to 32 letters, digits, `_`
+and `-`, and the handler checks the same name. `Page: .` is what draws the
+refusal below the challenge. `Theme`, `Size`, `Language` and `Appearance` pass
+straight to Cloudflare.
 
-`aru migrate` is a step in the pipeline and never a call at the start of the
-process: with N replicas, N migrations race each other.
+Run `aru view:build` afterwards.
 
-**Symptom to recognise:** `no such table`, or `relation does not exist`, from a
-route that authorized correctly. The migration has not run.
-
-## Configuration
-
-| field | required | meaning |
-| --- | --- | --- |
-| `Prefix` | no | where the routes are mounted. Defaults to `/turnstile` |
-| `PageSize` | no | how many records one page answers with. Defaults to 25, refused above 200 |
-
-`turnstile.Config{}` is a complete configuration. There is no tenant to pass:
-every route needs a session, and the tenant of every statement comes from
-`data.Tenant(g)`, off the Grant of whoever is signed in. Passing a value the
-request named — a path segment, a header, a subdomain read off the URL — is what
-`TestNoTenantIsReadOutOfTheRequest` fails on in the package. In an application
-the same mistake is `aru doctor`'s `tenant-from-request`; in a package nothing
-but the package's own suite looks.
-
-`PageSize` above 200 is an error from `New`, not a silent 200. A number somebody
-wrote and did not get is worse than a number somebody wrote and was told about.
-
-## Routes
-
-| method | path | name |
-| --- | --- | --- |
-| `GET` | `/turnstile` | `turnstile.index` |
-| `GET` | `/turnstile/{id}` | `turnstile.show` |
-| `POST` | `/turnstile` | `turnstile.store` |
-
-Every route sits behind `RequireAuth`, mounted by the package itself. A request
-with no session is sent to `/auth/login` — 303, or `HX-Redirect` for an htmx
-request — and comes back to the address it asked for after signing in. That is
-the sign-in screen the starter kit publishes; an application without one sees
-a 404 there.
-
-**Symptom to recognise:** every route of the package redirects to
-`/auth/login`. Nobody is signed in on that request: the session cookie did not
-arrive, or the session store passed to `New` is not the one the application
-signs people in with.
-
-Build URLs from the names, never by writing the path a second time. `aru
-route:list` shows them grouped by module. Under a custom `Prefix` the paths move
-and the names do not.
-
-`GET /turnstile` answers `{"data": {"items": [...]}}`, and adds
-`"next_cursor"` beside `data` when a further page exists. Pass it back as
-`?cursor=`. A page shorter than `PageSize` is the last one and carries no
-cursor.
-
-`TenantID` is not in any response. That is deliberate: it names a customer's
-identifier and the response is a declared list of fields rather than the entity.
-
-## Every route refuses everybody, until you open the policy
-
-This is the state the package ships in, and it is not a bug to work around.
-`TurnstilePolicy` denies every action and has no branch that allows one:
-
-```
-403 Forbidden
-```
-
-is what a correctly installed, correctly migrated, correctly wired package
-answers to an administrator who is signed in, on day one.
-
-Opening an action means writing the rule that opens it, in the package's
-`policy.go`, inside the block that says so:
+## 5. The check, in the handler
 
 ```go
-	// arandu:begin custom
-	if a == TurnstileView && (s.ID == record.ID || s.HasRole("admin")) {
-		return nil
-	}
-	// arandu:end custom
+if err := captcha.Check(ctx.Ctx(), ctx.Input(turnstile.FieldName), ctx.IP(), "signup"); err != nil {
+	return err
+}
 ```
 
-What is not written there stays closed, including every action added later.
-There are five actions — `TurnstileView`, `TurnstileList`, `TurnstileCreate`,
-`TurnstileUpdate`, `TurnstileDelete` — and opening one opens exactly one.
+Here `turnstile` is the root package, `github.com/hyz-is/arandu-turnstile`. It
+is the first thing the handler does with the submission, before validation of
+the other fields, and it is done once: a token is spent by verifying it.
 
-**Do not open it from the application.** There is no hook, no override and no
-config flag for the policy, and adding one would be a second place where
-authorization is decided. If the rules this application needs are not the rules
-the package ships, the change belongs in the package.
+A refusal returns `validation.Errors` under `turnstile.FieldName`, and returning
+it sends the visitor back to the form with the message. An outage at Cloudflare
+is a refusal too, with the `Unavailable` message. A secret key Cloudflare
+refuses returns `turnstile.ErrMisconfigured`, which reaches the error page and
+the error report: fix the key.
 
-## What the answers mean
+In a test, build the Verifier with `turnstile.TestSecretKey` and post
+`turnstile.TestToken` under `turnstile.FieldName`; with
+`turnstile.TestSecretKeyFails` every token is refused. Both reach Cloudflare, so
+a suite that must stay offline points `Config.Endpoint` and `Config.Client` at
+an `httptest.NewTLSServer`.
 
-| status | what happened |
+## Symptoms
+
+| what happens | the missing piece |
 | --- | --- |
-| `303` to `/auth/login` | there is no session on the request |
-| `403` | the policy refused, or no rule allows the action yet |
-| `404` | no row with that id in this tenant |
-| `303` back to the page the request came from | the input was rejected; the messages and what was typed are in the flash |
-| `422` `application/problem+json` | the input was rejected and the request asked for JSON; the messages are in `errors`, keyed by field |
-
-A request that asks for JSON (an `Accept` naming `application/json`, or an XHR
-that is not htmx) gets the 403 and the 404 as problem documents too. The
-sign-in redirect is the same for every client.
-
-The package does not choose these: its handlers return what the service
-returned, and the framework's router answers it. A refusal carries no detail
-beyond the status and its standard sentence. Telling a client why a policy said
-no tells it what exists and what does not, one request at a time. The reason is
-in the log.
-
-Anything else is a 500 and the framework's error page in development. The
-package returns unexpected errors rather than swallowing them, so a route that
-answers 200 with an empty body is not something it does.
-
-## Reporting a problem
-
-Issues and pull requests go to the repository the module path names,
-`github.com/hyz-is/arandu-turnstile`, which belongs to `hyz-is`. A vulnerability goes to the
-private advisory form named in that repository's `SECURITY.md`, and never into
-an issue.
-
-MIT licensed. Copyright HYZIS.
+| the console says `arandu-turnstile: https://challenges.cloudflare.com/... did not load` | the route of the page is not wrapped in `turnstile.Headers` |
+| it works after a refresh and not after clicking a link | the same: the page was swapped in by a boosted link and kept the old policy |
+| `arandu.ui is not on the page` | the layout does not load `ui.js` before the component's script |
+| the widget space is empty and nothing is in the console | `SiteKey` is empty in the page data |
+| every submission comes back with the Rejected message | the handler reads another field than `turnstile.FieldName`, the `Action` differs between view and handler, or the widget is outside the `<form>` |
+| the second attempt after a refusal is refused as spent (`timeout-or-duplicate`) | the form was posted without htmx and the page was not drawn again; with htmx the widget renews itself |
+| `turnstile: Cloudflare refused the secret key` on the error page | the secret key in the environment is wrong or belongs to another widget |

@@ -8,21 +8,41 @@ import (
 	"testing"
 )
 
-func TestTheManifestFrameworkFloorMatchesGoMod(t *testing.T) {
-	root := packageRoot(t)
-	goMod := readReleaseFile(t, root, "go.mod")
-	manifest := readReleaseFile(t, root, "arandu.mod.toml")
+// directRequirements are the only modules go.mod may require directly. The
+// package is compiled into other people's builds, so every further require is a
+// download and an audit surface for each of them. Hesape carries the view
+// registry, the validation errors and the security headers; kyse carries the
+// component props the widget is drawn with. The framework is not one of them:
+// nothing here needs the application kernel.
+var directRequirements = map[string]bool{
+	"github.com/arandu-io/hesape": true,
+	"github.com/arandu-io/kyse":   true,
+}
 
-	required := captureReleaseValue(t, goMod,
-		`(?m)^\s*github\.com/arandu-io/framework v([0-9]+\.[0-9]+)\.[0-9]+\s*$`,
-		"Framework version in go.mod")
-	declared := captureReleaseValue(t, manifest,
-		`(?m)^framework = ">= ([0-9]+\.[0-9]+)"$`,
-		"Framework floor in arandu.mod.toml")
+// TestTheModuleRequiresNothingButHesapeAndKyse holds the dependencies this
+// package takes.
+func TestTheModuleRequiresNothingButHesapeAndKyse(t *testing.T) {
+	goMod := readReleaseFile(t, packageRoot(t), "go.mod")
 
-	if declared != required {
-		t.Fatalf("manifest Framework floor = %s, want %s from go.mod", declared, required)
+	required := regexp.MustCompile(`(?m)^(?:require\s+|\t)([a-z0-9.\-]+\.[a-z]+/\S+)\s+v\S+(\s*//\s*indirect)?\s*$`).
+		FindAllStringSubmatch(goMod, -1)
+	for _, requirement := range required {
+		if requirement[2] != "" {
+			continue
+		}
+		if !directRequirements[requirement[1]] {
+			t.Errorf("go.mod requires %s directly; this package depends on github.com/arandu-io/hesape and github.com/arandu-io/kyse and nothing else",
+				requirement[1])
+		}
 	}
+}
+
+// TestTheManifestDeclaresAFrameworkFloor keeps the floor an installer reads.
+// It is not derived from go.mod, because the framework is not in it: the floor
+// is the first Framework release built on the Hesape that go.mod requires.
+func TestTheManifestDeclaresAFrameworkFloor(t *testing.T) {
+	manifest := readReleaseFile(t, packageRoot(t), "arandu.mod.toml")
+	captureReleaseValue(t, manifest, `(?m)^framework = ">= ([0-9]+\.[0-9]+)"$`, "Framework floor in arandu.mod.toml")
 }
 
 func TestTheReleaseSkillUsesTheManifestFrameworkFloor(t *testing.T) {
@@ -56,53 +76,6 @@ func releasedChangelog(t *testing.T) string {
 		t.Skip("nothing released yet: this package has no versioned changelog entry")
 	}
 	return body[first[0]:]
-}
-
-// TestEveryActionIsNamedInAReleasedChangelogEntry is the gate that catches a
-// tag pushed without filing what it shipped.
-//
-// An action is added in the same change that adds the capability behind it, so
-// an action still sitting in [Unreleased] means the version that introduced it
-// went out undocumented. It is the cheapest signal of that, and it needs no git
-// history to read.
-func TestEveryActionIsNamedInAReleasedChangelogEntry(t *testing.T) {
-	policy := readReleaseFile(t, packageRoot(t), "policy.go")
-	released := releasedChangelog(t)
-
-	names := regexp.MustCompile(`(?m)^\t([A-Z][A-Za-z]*) security\.Action = `).FindAllStringSubmatch(policy, -1)
-	if len(names) == 0 {
-		t.Fatal("policy.go declares no actions")
-	}
-	for _, name := range names {
-		if !strings.Contains(released, "`"+name[1]+"`") {
-			t.Errorf("no released changelog entry names %s", name[1])
-		}
-	}
-}
-
-// TestEveryMigrationIsNamedInAReleasedChangelogEntry holds the same for schema.
-//
-// A migration is the one thing an operator has to run before a version serves,
-// so a version that shipped one and did not say so is a version that fails at
-// the first request against a column that is not there.
-func TestEveryMigrationIsNamedInAReleasedChangelogEntry(t *testing.T) {
-	module := readReleaseFile(t, packageRoot(t), "module.go")
-	released := releasedChangelog(t)
-
-	ids := regexp.MustCompile(`"([0-9]{8}_[0-9]{4}_[a-z_]+)"`).FindAllStringSubmatch(module, -1)
-	if len(ids) == 0 {
-		t.Fatal("module.go declares no migrations")
-	}
-	seen := map[string]bool{}
-	for _, id := range ids {
-		if seen[id[1]] {
-			continue
-		}
-		seen[id[1]] = true
-		if !strings.Contains(released, id[1]) {
-			t.Errorf("no released changelog entry names migration %s", id[1])
-		}
-	}
 }
 
 // TestEveryChangelogVersionHasUpgradeNotes keeps the two files describing the
@@ -239,4 +212,39 @@ func captureReleaseValue(t *testing.T, body, pattern, label string) string {
 		t.Fatalf("%s is missing", label)
 	}
 	return match[1]
+}
+
+// currentVersion is the release this working tree is preparing.
+//
+// It is written here and compared against the changelog rather than read out of
+// it: a test that took the number from the file it checks would pass on a file
+// that lost its heading.
+const currentVersion = "0.1.0"
+
+// TestTheChangelogAndTheUpgradeGuideAgreeOnTheVersion keeps the two pages a
+// person reads before upgrading from naming different releases, and the
+// release workflow from finding no notes to publish.
+func TestTheChangelogAndTheUpgradeGuideAgreeOnTheVersion(t *testing.T) {
+	root := packageRoot(t)
+	changelog := readReleaseFile(t, root, "CHANGELOG.md")
+	upgrade := readReleaseFile(t, root, "UPGRADE.md")
+
+	if got := strings.Count(changelog, "## ["+currentVersion+"] - "); got != 1 {
+		t.Fatalf("v%s changelog headings = %d, want exactly one pre-versioned entry", currentVersion, got)
+	}
+	if !regexp.MustCompile(`(?m)^## v` + regexp.QuoteMeta(currentVersion) + `$`).MatchString(upgrade) {
+		t.Fatalf("UPGRADE.md has no v%s entry", currentVersion)
+	}
+}
+
+// TestEveryEntryPointIsNamedInAReleasedChangelogEntry is the gate that catches
+// a tag pushed without filing what it shipped: the calls an application writes
+// to install this package are the ones a changelog has to name.
+func TestEveryEntryPointIsNamedInAReleasedChangelogEntry(t *testing.T) {
+	released := releasedChangelog(t)
+	for _, name := range []string{"`New`", "`Verify`", "`Check`", "`Headers`", "`Policy`", "`Widget`", "`FieldName`"} {
+		if !strings.Contains(released, name) {
+			t.Errorf("no released changelog entry names %s", name)
+		}
+	}
 }

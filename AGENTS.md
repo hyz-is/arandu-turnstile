@@ -1,180 +1,108 @@
 # Working on Arandu Turnstile
 
-This is an Arandu package: one entity with an embedded Hesape Model, one policy
-that decides about it, one service that owns the database handle, and the routes
-that reach them.
-It is a Go module somebody `go get`s and registers by hand in their own
-`bootstrap/app.go`, which is the whole difference from working in an
-application. There is no service provider, no container and no discovery — if a
-line of wiring is not written in the installer's repository, it does not happen.
+This is an Arandu package that puts Cloudflare Turnstile in front of a form:
+the `Widget` component in `components/`, the client behaviour it loads, the
+Content-Security-Policy its page needs, and the server-side verification. It is
+a Go module somebody `go get`s and imports.
+
+It began as the package skeleton, configured as `hyz-is/turnstile`, and the
+HTTP module the template ships was removed on purpose: there is no entity, no
+table, no migration, no policy, no route and no `Module` to register. The
+verification is a call the handler makes with values it already has, and
+nothing here should grow back into a module.
 
 Read `.agents/skills/` before writing code. Each skill is a procedure, and the
 one you need is named by the situation you are in.
 
 ## The gates
 
-Nothing is finished until all four exit zero.
+Nothing is finished until all five exit zero.
 
 ```sh
 export GOWORK=off
+aru view:build
 gofmt -l $(find . -name '*.go' -not -path '*/testdata/*' -not -name '*.kyse.go')
 go build ./...
 go vet ./...
 go test -race ./...
 ```
 
-`GOWORK=off` is not borrowed from somewhere else, and here it is not a
-preference either. This checkout may sit beside a Go workspace that lists the
-framework repositories and does not list this one; when it does, every command
-above fails before it compiles anything:
+`aru view:build` compiles `components/widget.kyse.go` into the `widget.go`
+beside it. The compiled file is committed, because `go get` has no build step:
+what is in the repository is what every installer imports. A change to the
+`.kyse.go` without the rebuild ships the old component.
+
+`GOWORK=off` is not a preference. This checkout may sit beside a Go workspace
+that lists the framework repositories and does not list this one; when it does,
+every command above fails before it compiles anything:
 
 ```
 pattern ./...: directory prefix . does not contain modules listed in go.work
 or their selected dependencies
 ```
 
-With the workspace off, the module resolves the framework version in `go.mod` —
-which is what CI compiles against, and what somebody's `go get` will get.
+With the workspace off, the module resolves the versions in `go.mod`, which is
+what CI compiles against and what somebody's `go get` will get.
 
-Both filters on `gofmt` are load-bearing in the toolchain even where this
-repository has nothing for them to skip: `gofmt` is the only tool in the chain
-that ignores build tags, and `testdata/` is where a fixture is allowed to be
-invalid on purpose.
-
-`aru doctor` is not one of the gates, and running it here costs a minute and
-answers nothing:
-
-```
-this is not an Arandu project: no go.mod, main.go and arandu.toml together.
-Run it from inside a project, or create one with `aru new`
-```
-
-It exits 1. It reads applications, and this is a library.
-
-It does not read this one after it is installed either, and that is why
-`tests/Unit/audit_test.go` exists. The doctor walks the application's own tree,
-skips `vendor/`, and opens the one `arandu.mod.toml` at its root; it never loads
-a dependency. So `tenant-from-request`, `system-grant-without-tenant` and
-`permission-not-declared` never see a line of an installed package, and whatever
-this one must prove about itself it proves in its own suite or nowhere.
+`aru doctor` is not one of the gates. It reads applications, and exits 1 here.
+It does not read this package after it is installed either, which is why
+`tests/Unit/audit_test.go` compares `arandu.mod.toml` with what the code calls.
 
 ## What this repository holds
 
 | | measured with |
 | --- | --- |
-| 7 Go files, one per role and one generated, all in one package at the root | `grep -l '^package turnstile' *.go` |
-| 6 test files, 44 tests | `find tests -name '*_test.go'` · `go test -count=1 ./... -v \| grep -c '^--- PASS'` |
-| 3 routes | `grep -c 'r.Action' module.go` |
-| 5 actions the policy answers about | `grep -cE '^\t[A-Za-z]+ security.Action = ' policy.go` |
-| 2 direct dependencies, both under `arandu-io` | `go list -m -f '{{if and (not .Indirect) (not .Main)}}{{.Path}} {{.Version}}{{end}}' all` |
+| 6 Go files in the root package, 1 component and its compiled file in `components/` | `ls *.go components/` |
+| 1 script, served from the application's origin | `ls assets/` |
+| 0 routes, 0 tables, 1 capability (`network`) | `arandu.mod.toml`, `TestThePackageIsALibrary` |
+| 2 direct dependencies, `hesape` and `kyse` | `go list -m -f '{{if and (not .Indirect) (not .Main)}}{{.Path}} {{.Version}}{{end}}' all` |
 
-The layout is by role rather than by layer, so the package reads top to bottom:
-
-```
-module.go         registration, routes, handlers and migrations
-config.go         what the application passes in
-model.go          the entity, its table, its own rules, and what it may answer with
-TurnstileQuery.go  the query on that table, generated by aru model:build
-policy.go         who may do what
-service.go        validation, authorization and persistence with the Grant
-views.go          the files the application takes ownership of
-```
-
-`turnstileTable`, in `model.go`, declares the table once: its name, the
-`ManualKey` that says the text primary key is written by the application, and
-the default `tenant_id` scope. `Turnstiles(db)` is generated from it into
-`TurnstileQuery.go` and returns the concrete `*TurnstileQuery`; that file is never
-edited by hand, and `aru model:build --check` says when it is stale. Its
-terminals return `*Turnstile` and `TurnstileCollection`; keep those pointers
-intact, because copying an embedded Model leaves its `Entity` pointer aimed at
-the original allocation.
-
-The rules of the entity itself (invariants, derived values, transitions that
-change only its own fields) live in the custom block of `model.go`, and they
-are pure. The service holds none of them: it validates the request, asks the
-policy for a Grant, calls those rules and saves with the Grant. `Resource` and
-`Collection` are the deliberate response snapshot boundary.
-
-## What does not exist here
-
-Reaching for one of these is the most common way to write a package that is
-rejected in review. None of them is missing by accident.
+## What does not exist here, on purpose
 
 | A model reaches for | What is here instead |
 | --- | --- |
-| a service provider, a container, a `Register()` that discovers things | `New(cfg, db, sessions)`, called by hand in the installer's `bootstrap/app.go`. Everything the package touches is a parameter |
-| a global `DB`, an `init()` that opens a connection | the `*data.DB` handed to `New`. A package that opened its own connection would be a package the application cannot point at a test database |
-| a CRUD Repository beside the Model | `Turnstiles(db)`, reached only by `TurnstileService` after `security.Authorize` |
-| a tenant read from the path, the body, the query or a header | `data.Tenant(g)`, from the Grant, which came from the session |
-| a permit-all branch in the policy "for now" | nothing. The policy denies, and an action is opened by writing the rule that opens it |
-| an `interface{}` config, a map of options, an env var read at call time | the typed `Config` struct, validated by `New` |
-| a `panic` on bad wiring | an `error` from `New`. A wiring mistake found at boot costs one restart |
-| a third dependency | an argument, first. This module is imported into other people's builds |
-| a command of its own that copies files into a project | `Publishes()`, which declares a tagged tree and nothing more. `aru vendor:publish` asks the application which modules it registered and writes what each one declares, so one command serves every installed package instead of one command per package |
+| a `Module`, a route, a line in `k.Register` | nothing to register. `New` builds a Verifier the application keeps |
+| middleware that verifies the token before the handler | `Check`, called by the handler. A token is spent by verifying it, so it is verified once, by the code that acts on the submission |
+| a fallback that lets the form through when Cloudflare is down | nothing. The check fails closed; a check that opens when it is slow is one an attacker turns off |
+| a copy of Cloudflare's `api.js` served from this origin | the script loaded from `https://challenges.cloudflare.com`, which Cloudflare requires: the file changes without changing its address |
+| `class="cf-turnstile"` and Cloudflare's implicit render | `render=explicit`, driven by the `turnstile` behaviour, because the implicit scan runs once and misses every widget an htmx swap brings in |
+| `data-callback="someGlobal"` or an inline script | the behaviour registered with `arandu.ui.define`, reading props the component wrote. The page stays at `script-src 'self'` plus one origin |
+| a global widening of the policy | `Headers` on the routes that draw the widget. Every other page keeps the default |
+| the secret key in a log line, an error or `%v` | `Config.String` and `GoString` redact it, and no error carries the request body |
+| an `init` that does more than register the script | `view.RegisterAsset` and nothing else. `TestThePackageIsALibrary` holds it |
+| an import of the framework | the standard library, `hesape/http`, `hesape/http/middleware`, `hesape/validation`, `hesape/view` and `kyse/components`. `TestThePackageIsALibrary` holds the list |
 
 ## The four properties
 
-These are the reason the package is shaped the way it is. A change that breaks
-one of them is not merged, whatever else it improves. `tests/Unit/policy_test.go`
-checks all four against the code.
+A change that breaks one of them is not merged, whatever else it improves.
 
-1. **The policy denies by default**, and has no branch that allows an action.
-   `TestThePolicyDeniesEveryActionByDefault` walks every action with an
-   administrator subject and requires
-   `security.ErrForbidden` from each.
-2. **Every Service method authorizes before it reaches the Model.**
-   `TestEveryServiceMethodAuthorizesBeforeTheModel` checks the source, and
-   `TestTheServiceRefusesBeforeReachingTheModel` gives the Service a nil handle
-   so even constructing `Turnstiles` in the wrong order fails.
-3. **The tenant comes from `data.Tenant(g)`**, on every path, read and write.
-   `TestTheTenantComesFromTheGrant` and
-   `TestTheServiceWritesTenantOnlyFromTheGrant` hold both halves.
-4. **Nothing reaches the Model without passing the first two.** The denial
-   suite constructs the Service with a nil database, so a call to
-   `Turnstiles(nil)` would panic. Every refusal it asserts is therefore proof
-   that authorization happened before Model construction.
-
-`policy_test.go` holds those four by calling the code. `tests/Unit/audit_test.go`
-holds the same shape by *reading* it: every exported Service method must call
-`Authorize` before its first `Turnstiles`, every tenant write in the Service
-comes from `data.Tenant(g)`, and no tenant accessor reads request input.
-
-It also compares `arandu.mod.toml` against what the code *calls* —
-`os.WriteFile`, `exec.Command`, `http.Get`, a method named `Migrations` — rather
-than against what it imports, because `net/http` is imported by everything with
-a route and says nothing. Both directions fail: used and not declared, which is
-`permission-not-declared` where the doctor runs it, and declared and not used,
-which is a warning there and a failure here because `go test` has one outcome.
-Adding an outbound call, a file write or a process means declaring it in the
-same commit, and the suite is what says so.
-
-The fifth property is not syntax, so it is held where the routes exist.
-`TestNoRouteLandsInTheFrameworkNamespace`, in `tests/Feature/routes_test.go`,
-registers the module and reads the table back: a prefix arrives through
-configuration, and `/_arandu/` is refused when the application boots — in the
-installer's process, after publication.
-
-What the audit does not reach is written at the top of the file it lives in. It
-reads syntax, so dynamic dispatch, reflection, and wrappers around the named
-seams are invisible to it. A green run means no such thing was found written
-down, not that none exists.
+1. **It fails closed.** Every path out of `Verify` that is not Cloudflare
+   saying yes, for the expected hostname and action, is an error, and `Check`
+   turns every error into a refusal or into `ErrMisconfigured`, never into
+   `nil`.
+2. **The token is verified once, by the handler.** Nothing in the package
+   verifies a token on its own initiative.
+3. **The secret key stays on the server.** It reaches the verification body
+   and nothing else: not the page, not an error, not a formatted `Config`.
+4. **`arandu.mod.toml` matches the code.** `network = true` for the one call to
+   `siteverify`, the other three `false`, and `tests/Unit/audit_test.go`
+   compares that with what the code calls.
 
 ## Writing code
 
 Everything in the source is in English: identifiers, doc comments, internal
-comments, error messages, log messages, and the names and messages of tests.
-`pkg.go.dev` publishes the doc comments and its readers are users of this
-package.
+comments, error messages, the script, and the names and messages of tests. The
+default messages are English; an application passes its own in `Messages`.
 
 Every exported symbol carries a doc comment, and the comment documents the
 symbol and nothing else. Why a signature is what it is belongs there when it is
-a fact about the code — *"the value is held because Go does not build a type
-from a string"* stays. A date, an issue number, a version in progress or the
+a fact about the code. A date, an issue number, a version in progress or the
 name of another repository does not.
 
-Tests go under `tests/`, in a capitalized category directory declaring a
-lowercase external package: `tests/Unit` holds `package unit_test`,
-`tests/Feature` holds `package feature_test`. Both import the package by its
-module path, which is what makes them see exactly what a caller sees. A test
-that genuinely needs something unexported goes beside the code as
-`*_internal_test.go`, and the suffix is how it says so.
+The component is written in `components/widget.kyse.go`, never in the compiled
+`widget.go`. Its parts are published in `PartNames`, and
+`TestEveryPublishedPartIsDrawn` holds the list to the markup in both directions.
+
+Tests go under `tests/Unit`, declaring `package unit_test`, and import the
+packages by their module paths, which is what makes them see exactly what a
+caller sees. No test calls Cloudflare: the endpoint is a local TLS server.
