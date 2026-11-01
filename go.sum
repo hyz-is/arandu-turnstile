@@ -1,4 +1,4 @@
-github.com/arandu-io/hesape v0.86.0 h1:5ZgIKtCKWsX8i6YW2WJn88oL5OE3jlJ17PYruhLn2+Q=
-github.com/arandu-io/hesape v0.86.0/go.mod h1:wwVHND0vi2S1Fynb/47PPzKqzTmfAHNXZUMlbxNI2T4=
-github.com/arandu-io/kyse v0.44.0 h1:iiPqEY+M4DhB/02eqRpK/6YxTMnLPWN+AhAsZQZvIXw=
-github.com/arandu-io/kyse v0.44.0/go.mod h1:YwNCY/e5qj0rJi585Nfk1ZPvTP0zDU4JzRzRRk2DY6k=
+github.com/arandu-io/hesape v0.88.0 h1:a6Qg5fcsyelN6lScefZbwHAr1ZKHWuM9X7Mcl6eOTnY=
+github.com/arandu-io/hesape v0.88.0/go.mod h1:wwVHND0vi2S1Fynb/47PPzKqzTmfAHNXZUMlbxNI2T4=
+github.com/arandu-io/kyse v0.45.0 h1:kXsWispWyNDzTWrPduQWZvPo7Ts2bKqfTfOOj2g/dS8=
+github.com/arandu-io/kyse v0.45.0/go.mod h1:Y0wNTF8BqBX92rSL7gOT9yjkrCCz3BGhNzvg/etq02I=
