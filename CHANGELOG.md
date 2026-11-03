@@ -10,6 +10,17 @@ a release is corrected by another release and never by moving a tag.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-03
+
+### Added
+
+- `Config.OnRefused`: `Check` tells the application what Cloudflare answered
+  each time it refuses a submission (the error codes, the hostname, the action
+  and the reason), never the token or the secret key. A token the widget showed
+  as solved and the server refused ("timeout-or-duplicate", a hostname that is
+  not the application's) left no trace before, because `Check` answered only
+  the sentence for the visitor.
+
 ## [0.1.3] - 2026-10-25
 
 ### Changed

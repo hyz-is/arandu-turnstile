@@ -21,9 +21,15 @@ import (
 // fault of the deployment, and it belongs on the error page and in the error
 // report rather than in front of a visitor who can do nothing about it.
 //
+// Config.OnRefused, when set, is told what Cloudflare answered each time this
+// refuses, so a refusal of a token that looked solved leaves its reason behind.
+//
 // Verify is the call for a caller that needs the Result or the reason.
 func (v *Verifier) Check(ctx context.Context, token, remoteIP, action string) error {
-	_, err := v.Verify(ctx, Challenge{Token: token, RemoteIP: remoteIP, Action: action})
+	result, err := v.Verify(ctx, Challenge{Token: token, RemoteIP: remoteIP, Action: action})
+	if err != nil && v.onRefused != nil {
+		v.onRefused(ctx, result, err)
+	}
 	switch {
 	case err == nil:
 		return nil

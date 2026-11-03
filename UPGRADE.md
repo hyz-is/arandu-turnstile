@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.2.0
+
+Nothing to change. A deployment that does nothing is checked as before. To learn
+why a token the widget showed as solved was refused, set `Config.OnRefused` and
+log `result.ErrorCodes`, `result.Hostname`, `result.Action` and the reason: it is
+called by `Check` on every refusal and never carries the token.
+
 ## v0.1.3
 
 Nothing to change. An application on Framework v0.66.0 has its Hesape raised

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/arandu-io/hesape/validation"
@@ -78,5 +79,51 @@ func TestCheckDoesNotHideAMisconfiguration(t *testing.T) {
 	var refused validation.Errors
 	if errors.As(err, &refused) {
 		t.Error("a misconfiguration came back as a field error")
+	}
+}
+
+// A refusal leaves its reason behind: the application is told the codes
+// Cloudflare answered, and what it is told carries no token.
+func TestCheckTellsTheApplicationWhyATokenWasRefused(t *testing.T) {
+	t.Parallel()
+	var seen turnstile.Result
+	var reason error
+	calls := 0
+	v := newSiteverify(t, answering(`{"success":false,"hostname":"app.example.com","error-codes":["timeout-or-duplicate"]}`)).verifier(t, turnstile.Config{
+		OnRefused: func(_ context.Context, result turnstile.Result, why error) {
+			calls++
+			seen, reason = result, why
+		},
+	})
+
+	if err := v.Check(context.Background(), "a-token-never-logged", "203.0.113.7", "signup"); err == nil {
+		t.Fatal("Check accepted a refused token")
+	}
+	if calls != 1 {
+		t.Fatalf("OnRefused called %d times, want 1", calls)
+	}
+	if len(seen.ErrorCodes) != 1 || seen.ErrorCodes[0] != "timeout-or-duplicate" || seen.Hostname != "app.example.com" {
+		t.Errorf("result = %+v", seen)
+	}
+	if !errors.Is(reason, turnstile.ErrRejected) {
+		t.Errorf("reason = %v, want ErrRejected", reason)
+	}
+	if strings.Contains(reason.Error(), "a-token-never-logged") {
+		t.Error("the reason carries the token")
+	}
+}
+
+// A good token is not a refusal.
+func TestCheckDoesNotCallOnRefusedForAGoodToken(t *testing.T) {
+	t.Parallel()
+	called := false
+	v := newSiteverify(t, answering(accepted)).verifier(t, turnstile.Config{
+		OnRefused: func(context.Context, turnstile.Result, error) { called = true },
+	})
+	if err := v.Check(context.Background(), "token", "", "signup"); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if called {
+		t.Error("OnRefused was called for an accepted token")
 	}
 }

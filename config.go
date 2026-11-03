@@ -1,6 +1,7 @@
 package turnstile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -86,6 +87,14 @@ type Config struct {
 	Endpoint string
 	// Messages are the sentences a refused submission is answered with.
 	Messages Messages
+	// OnRefused, when set, is called by Check with what Cloudflare answered
+	// whenever a submission is refused, before the field error is returned.
+	// The Result carries the error codes, the hostname and the action, never
+	// the token and never the secret key, so the application can log why a
+	// token that looked solved was refused ("timeout-or-duplicate",
+	// "invalid-input-response", a hostname that is not its own). It must not
+	// block: Check waits for it.
+	OnRefused func(ctx context.Context, result Result, reason error)
 }
 
 // Messages are the sentences a refused submission is answered with, in the

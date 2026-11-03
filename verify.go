@@ -41,6 +41,7 @@ type Verifier struct {
 	client    *http.Client
 	endpoint  string
 	messages  Messages
+	onRefused func(ctx context.Context, result Result, reason error)
 }
 
 // New returns the Verifier, or the reason it cannot be built.
@@ -55,6 +56,7 @@ func New(cfg Config) (*Verifier, error) {
 		client:    cfg.Client,
 		endpoint:  cfg.Endpoint,
 		messages:  cfg.Messages,
+		onRefused: cfg.OnRefused,
 	}
 	for _, host := range cfg.Hostnames {
 		v.hostnames = append(v.hostnames, strings.ToLower(host))
