@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.3.0
+
+Nothing to change in the code. The script is registered and served as `turnstile.js` instead of `arandu-turnstile.js`; a page that was cached before the upgrade names the old file, and its address answers 404 until the page is drawn again. Nothing that is not a cached page names it: `Widget` writes `ScriptAsset`.
+
 ## v0.2.0
 
 Nothing to change. A deployment that does nothing is checked as before. To learn

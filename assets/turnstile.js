@@ -27,7 +27,7 @@
 	var arandu = window.arandu;
 	if (!arandu || !arandu.ui || typeof arandu.ui.define !== 'function') {
 		if (window.console && console.error) {
-			console.error('arandu-turnstile: arandu.ui is not on the page; the layout has to load ui.js before this script');
+			console.error('turnstile: arandu.ui is not on the page; the layout has to load ui.js before this script');
 		}
 		return;
 	}
@@ -67,7 +67,7 @@
 			loading = false;
 			waiting = [];
 			if (window.console && console.error) {
-				console.error('arandu-turnstile: ' + SOURCE + ' did not load. The route that draws this page has to be ' +
+				console.error('turnstile: ' + SOURCE + ' did not load. The route that draws this page has to be ' +
 					'wrapped in turnstile.Headers, which allows https://challenges.cloudflare.com in script-src and frame-src');
 			}
 		});

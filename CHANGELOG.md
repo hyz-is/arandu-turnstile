@@ -10,6 +10,12 @@ a release is corrected by another release and never by moving a tag.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-14
+
+### Changed
+
+- The client script is served as `turnstile.js` and no longer as `arandu-turnstile.js`, so the address a visitor's page loads, `/<prefix>/assets/<hash>/turnstile.js`, carries nothing of the framework's name. `ScriptAsset` is the new name and `Widget` writes it, so a view that draws the widget needs no change.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added

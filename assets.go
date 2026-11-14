@@ -9,7 +9,7 @@ import (
 // ScriptAsset is the name the client behaviour is served under, from this
 // origin, by the application's asset handler. Widget writes the script tag
 // that loads it.
-const ScriptAsset = "arandu-turnstile.js"
+const ScriptAsset = "turnstile.js"
 
 // script is the client behaviour: it loads Cloudflare's script once, renders
 // each widget the page draws or a swap brings in, renews the token after every
@@ -20,7 +20,7 @@ const ScriptAsset = "arandu-turnstile.js"
 // behaviour a page runs is the one the installed version of this package
 // carries, and an upgrade reaches it.
 //
-//go:embed assets/arandu-turnstile.js
+//go:embed assets/turnstile.js
 var script []byte
 
 // The behaviour is registered when the package is linked: a view that draws

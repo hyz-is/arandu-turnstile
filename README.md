@@ -132,7 +132,7 @@ verify.go                Verifier, New, Verify and the errors
 check.go                 Check, for a form handler
 headers.go               Policy and Headers
 assets.go                the client behaviour, registered with the view layer
-assets/                  arandu-turnstile.js
+assets/                  turnstile.js
 components/widget.kyse.go  the Widget component, and widget.go compiled from it
 ```
 
