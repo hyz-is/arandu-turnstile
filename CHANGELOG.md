@@ -72,10 +72,10 @@ a release is corrected by another release and never by moving a tag.
 - `Policy` adds `https://challenges.cloudflare.com` to `script-src` and
   `frame-src` of a Content-Security-Policy, and `Headers` writes it on the
   routes that draw the widget, answering a boosted navigation with
-  `HX-Redirect` so the page loads with its own policy.
+  the old library's redirect header so the page loads with its own policy.
 - `Widget`, in `components`, draws the challenge inside a form, with the
   refusal from `Page` below it, and loads the `turnstile` behaviour, which
-  renders the widget explicitly, renews its token after each htmx request of
+  renders the widget explicitly, renews its token after each old-library request of
   its form and removes it when the markup leaves the page.
 - `TestSiteKey`, `TestSecretKey`, `TestSecretKeyFails`, `TestSecretKeySpent`
   and `TestToken`, Cloudflare's published keys for development and tests.
