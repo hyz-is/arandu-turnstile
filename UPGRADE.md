@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+Nothing to change in the code: no exported name changes. The page it serves is
+a YPY page, and three things follow from that.
+
+- **`Headers` reads and writes the YPY headers.** A boosted navigation is
+  recognised by `YPY-Request` and `YPY-Boosted`, answered with `YPY-Redirect` to
+  the same address, and the answer carries `Vary: YPY-Boosted`. A proxy or a
+  test that matched the headers of the old library matches these instead.
+- **The widget renews its token on `ypy:finally:request`**, which YPY fires
+  after every request its form sends, whatever the answer was.
+- **The element Cloudflare draws into carries `ypy-preserve="children"`.** A
+  swap that names no style morphs, and the answer holds that element with nothing
+  in it; without the attribute the morph would empty the challenge.
+
 ## v0.3.0
 
 Nothing to change in the code. The script is registered and served as `turnstile.js` instead of `arandu-turnstile.js`; a page that was cached before the upgrade names the old file, and its address answers 404 until the page is drawn again. Nothing that is not a cached page names it: `Widget` writes `ScriptAsset`.

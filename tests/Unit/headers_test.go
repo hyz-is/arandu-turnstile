@@ -67,8 +67,8 @@ func TestHeadersWidenThePolicyOfThePage(t *testing.T) {
 	if got := w.Header().Get("Content-Security-Policy"); !strings.Contains(directive(got, "script-src"), turnstile.Origin) {
 		t.Errorf("Content-Security-Policy = %q", got)
 	}
-	if !strings.Contains(w.Header().Get("Vary"), "HX-Boosted") {
-		t.Errorf("Vary = %q, want HX-Boosted", w.Header().Get("Vary"))
+	if !strings.Contains(w.Header().Get("Vary"), "YPY-Boosted") {
+		t.Errorf("Vary = %q, want YPY-Boosted", w.Header().Get("Vary"))
 	}
 }
 
@@ -77,31 +77,31 @@ func TestHeadersWidenThePolicyOfThePage(t *testing.T) {
 func TestABoostedNavigationLoadsThePage(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest(http.MethodGet, "/signup?plan=pro", nil)
-	r.Header.Set("HX-Request", "true")
-	r.Header.Set("HX-Boosted", "true")
+	r.Header.Set("YPY-Request", "true")
+	r.Header.Set("YPY-Boosted", "true")
 
 	w, reached := serve(r)
 	if reached {
 		t.Error("the page was drawn into a document that cannot load the widget")
 	}
-	if got := w.Header().Get("HX-Redirect"); got != "/signup?plan=pro" {
-		t.Errorf("HX-Redirect = %q", got)
+	if got := w.Header().Get("YPY-Redirect"); got != "/signup?plan=pro" {
+		t.Errorf("YPY-Redirect = %q", got)
 	}
 }
 
-func TestOtherHTMXRequestsReachThePage(t *testing.T) {
+func TestOtherYPYRequestsReachThePage(t *testing.T) {
 	t.Parallel()
 	for name, r := range map[string]*http.Request{
 		"a form post": httptest.NewRequest(http.MethodPost, "/signup", nil),
-		"an hx-get":   httptest.NewRequest(http.MethodGet, "/signup/fields", nil),
+		"a ypy-get":   httptest.NewRequest(http.MethodGet, "/signup/fields", nil),
 	} {
-		r.Header.Set("HX-Request", "true")
+		r.Header.Set("YPY-Request", "true")
 		if r.Method == http.MethodPost {
-			r.Header.Set("HX-Boosted", "true")
+			r.Header.Set("YPY-Boosted", "true")
 		}
 		w, reached := serve(r)
-		if !reached || w.Header().Get("HX-Redirect") != "" {
-			t.Errorf("%s: reached = %v, HX-Redirect = %q", name, reached, w.Header().Get("HX-Redirect"))
+		if !reached || w.Header().Get("YPY-Redirect") != "" {
+			t.Errorf("%s: reached = %v, YPY-Redirect = %q", name, reached, w.Header().Get("YPY-Redirect"))
 		}
 	}
 }

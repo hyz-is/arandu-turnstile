@@ -63,11 +63,11 @@ origins, pass the same ones to `DefaultContentSecurityPolicy`.
 
 Wrap the GET of every page that draws the widget, and only those. The
 middleware adds `https://challenges.cloudflare.com` to `script-src` and
-`frame-src`, and answers a boosted navigation with `HX-Redirect` so the page is
-loaded with its own policy: the layout's `hx-boost` swaps the body and keeps
+`frame-src`, and answers a boosted navigation with `YPY-Redirect` so the page is
+loaded with its own policy: the layout's `ypy-boost` swaps the body and keeps
 the policy of the page the link was on.
 
-A widget inside a fragment loaded by `hx-get` into another page needs the page
+A widget inside a fragment loaded by `ypy-get` into another page needs the page
 it lands in to carry the policy too. Wrap that page's route as well.
 
 ## 4. The component, in the view
@@ -137,5 +137,5 @@ an `httptest.NewTLSServer`.
 | `arandu.ui is not on the page` | the layout does not load `ui.js` before the component's script |
 | the widget space is empty and nothing is in the console | `SiteKey` is empty in the page data |
 | every submission comes back with the Rejected message | the handler reads another field than `turnstile.FieldName`, the `Action` differs between view and handler, or the widget is outside the `<form>` |
-| the second attempt after a refusal is refused as spent (`timeout-or-duplicate`) | the form was posted without htmx and the page was not drawn again; with htmx the widget renews itself |
+| the second attempt after a refusal is refused as spent (`timeout-or-duplicate`) | the form was posted without YPY and the page was not drawn again; with YPY the widget renews itself |
 | `turnstile: Cloudflare refused the secret key` on the error page | the secret key in the environment is wrong or belongs to another widget |

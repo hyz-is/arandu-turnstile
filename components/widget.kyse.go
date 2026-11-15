@@ -114,6 +114,7 @@ func (p WidgetProps) PartNames() []string { return []string{"root", "widget", "n
 >
 	<div
 		data-part="widget"
+		ypy-preserve="children"
 		@if(.PartClass("widget") != "")
 			class="{{ .PartClass("widget") }}"
 		@endif

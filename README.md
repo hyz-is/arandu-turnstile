@@ -57,7 +57,7 @@ r = r.Group("", turnstile.Headers(middleware.DefaultContentSecurityPolicy()))
 
 `turnstile.Headers` adds `https://challenges.cloudflare.com` to `script-src`
 and `frame-src` on those pages and nowhere else, and answers a boosted
-navigation with `HX-Redirect`: a document keeps the policy of its first load,
+navigation with `YPY-Redirect`: a document keeps the policy of its first load,
 so a page with the widget has to be loaded, not swapped in.
 
 ## Draw it
@@ -69,7 +69,7 @@ import turnstile "github.com/hyz-is/arandu-turnstile/components"
 ```
 
 ```html
-<form method="post" action="{{ .StoreURL }}" hx-post="{{ .StoreURL }}">
+<form method="post" action="{{ .StoreURL }}" ypy-post="{{ .StoreURL }}">
 	@csrf
 	...
 	{!! turnstile.Widget(turnstile.WidgetProps{
@@ -83,7 +83,7 @@ import turnstile "github.com/hyz-is/arandu-turnstile/components"
 
 The widget writes its token into a hidden field named `turnstile.FieldName`
 (`cf-turnstile-response`). A refusal comes back under that field and is drawn
-below the challenge. After every htmx request its form sends, the widget is
+below the challenge. After every YPY request its form sends, the widget is
 renewed, because a token can be spent only once.
 
 Run `aru view:build` after installing, as for any component.

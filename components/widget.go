@@ -166,31 +166,34 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 	if kyse__err == nil {
 		_, kyse__err = kyse__io.WriteString(kyse__w, "\t\tdata-part=\"widget\"\n")
 	}
-//line components/widget.kyse.go:117
+	if kyse__err == nil {
+		_, kyse__err = kyse__io.WriteString(kyse__w, "\t\typy-preserve=\"children\"\n")
+	}
+//line components/widget.kyse.go:118
 	if kyse__d.PartClass("widget") != "" {
-//line components/widget.go:172
+//line components/widget.go:175
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t\tclass=\"")
 		}
 		if kyse__err == nil {
-//line components/widget.kyse.go:118
+//line components/widget.kyse.go:119
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__view.TextAttr(kyse__d.PartClass("widget")))
-//line components/widget.go:179
+//line components/widget.go:182
 		}
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\"\n")
 		}
 	}
-//line components/widget.kyse.go:120
+//line components/widget.kyse.go:121
 	if kyse__d.Error() != "" {
-//line components/widget.go:187
+//line components/widget.go:190
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t\taria-describedby=\"")
 		}
 		if kyse__err == nil {
-//line components/widget.kyse.go:121
+//line components/widget.kyse.go:122
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__view.TextAttr(kyse__d.ErrorID()))
-//line components/widget.go:194
+//line components/widget.go:197
 		}
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\"\n")
@@ -198,11 +201,11 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 	}
 	if kyse__err == nil {
 		var kyse__v2 string
-//line components/widget.kyse.go:123
+//line components/widget.kyse.go:124
 		kyse__v2, kyse__err = kyse__view.Attributes(kyse__d.PartAttrs("widget"))
-//line components/widget.go:204
+//line components/widget.go:207
 		if kyse__err != nil {
-			kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:123", kyse__err)
+			kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:124", kyse__err)
 		} else {
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__v2)
 		}
@@ -223,20 +226,20 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 		_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t\tclass=\"")
 	}
 	if kyse__err == nil {
-//line components/widget.kyse.go:128
+//line components/widget.kyse.go:129
 		_, kyse__err = kyse__io.WriteString(kyse__w, kyse__view.TextAttr(kyse__d.PartClass("noscript", "text-muted-foreground text-sm")))
-//line components/widget.go:229
+//line components/widget.go:232
 	}
 	if kyse__err == nil {
 		_, kyse__err = kyse__io.WriteString(kyse__w, "\"\n")
 	}
 	if kyse__err == nil {
 		var kyse__v3 string
-//line components/widget.kyse.go:129
+//line components/widget.kyse.go:130
 		kyse__v3, kyse__err = kyse__view.Attributes(kyse__d.PartAttrs("noscript"))
-//line components/widget.go:238
+//line components/widget.go:241
 		if kyse__err != nil {
-			kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:129", kyse__err)
+			kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:130", kyse__err)
 		} else {
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__v3)
 		}
@@ -245,9 +248,9 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 		_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t>")
 	}
 	if kyse__err == nil {
-//line components/widget.kyse.go:130
+//line components/widget.kyse.go:131
 		_, kyse__err = kyse__io.WriteString(kyse__w, kyse__template.HTMLEscapeString(kyse__view.Text(kyse__d.NoScriptText())))
-//line components/widget.go:251
+//line components/widget.go:254
 	}
 	if kyse__err == nil {
 		_, kyse__err = kyse__io.WriteString(kyse__w, "</p>\n")
@@ -255,9 +258,9 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 	if kyse__err == nil {
 		_, kyse__err = kyse__io.WriteString(kyse__w, "\t</noscript>\n")
 	}
-//line components/widget.kyse.go:132
+//line components/widget.kyse.go:133
 	if kyse__d.Error() != "" {
-//line components/widget.go:261
+//line components/widget.go:264
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t<p\n")
 		}
@@ -268,9 +271,9 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t\tid=\"")
 		}
 		if kyse__err == nil {
-//line components/widget.kyse.go:135
+//line components/widget.kyse.go:136
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__view.TextAttr(kyse__d.ErrorID()))
-//line components/widget.go:274
+//line components/widget.go:277
 		}
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\"\n")
@@ -279,9 +282,9 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t\tclass=\"")
 		}
 		if kyse__err == nil {
-//line components/widget.kyse.go:136
+//line components/widget.kyse.go:137
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__view.TextAttr(kyse__d.PartClass("error", "text-destructive text-sm")))
-//line components/widget.go:285
+//line components/widget.go:288
 		}
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\"\n")
@@ -291,11 +294,11 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 		}
 		if kyse__err == nil {
 			var kyse__v4 string
-//line components/widget.kyse.go:138
+//line components/widget.kyse.go:139
 			kyse__v4, kyse__err = kyse__view.Attributes(kyse__d.PartAttrs("error"))
-//line components/widget.go:297
+//line components/widget.go:300
 			if kyse__err != nil {
-				kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:138", kyse__err)
+				kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:139", kyse__err)
 			} else {
 				_, kyse__err = kyse__io.WriteString(kyse__w, kyse__v4)
 			}
@@ -304,9 +307,9 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "\t\t>")
 		}
 		if kyse__err == nil {
-//line components/widget.kyse.go:139
+//line components/widget.kyse.go:140
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__template.HTMLEscapeString(kyse__view.Text(kyse__d.Error())))
-//line components/widget.go:310
+//line components/widget.go:313
 		}
 		if kyse__err == nil {
 			_, kyse__err = kyse__io.WriteString(kyse__w, "</p>\n")
@@ -317,11 +320,11 @@ func Widget(kyse__props WidgetProps) kyse__template.HTML {
 	}
 	if kyse__err == nil {
 		var kyse__v5 string
-//line components/widget.kyse.go:141
+//line components/widget.kyse.go:142
 		kyse__v5, kyse__err = kyse__view.TextURL(view.Asset(turnstile.ScriptAsset))
-//line components/widget.go:323
+//line components/widget.go:326
 		if kyse__err != nil {
-			kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:141", kyse__err)
+			kyse__err = kyse__fmt.Errorf("%s: %w", "components/widget.kyse.go:142", kyse__err)
 		} else {
 			_, kyse__err = kyse__io.WriteString(kyse__w, kyse__v5)
 		}

@@ -65,7 +65,7 @@ It does not read this package after it is installed either, which is why
 | middleware that verifies the token before the handler | `Check`, called by the handler. A token is spent by verifying it, so it is verified once, by the code that acts on the submission |
 | a fallback that lets the form through when Cloudflare is down | nothing. The check fails closed; a check that opens when it is slow is one an attacker turns off |
 | a copy of Cloudflare's `api.js` served from this origin | the script loaded from `https://challenges.cloudflare.com`, which Cloudflare requires: the file changes without changing its address |
-| `class="cf-turnstile"` and Cloudflare's implicit render | `render=explicit`, driven by the `turnstile` behaviour, because the implicit scan runs once and misses every widget an htmx swap brings in |
+| `class="cf-turnstile"` and Cloudflare's implicit render | `render=explicit`, driven by the `turnstile` behaviour, because the implicit scan runs once and misses every widget a YPY swap brings in |
 | `data-callback="someGlobal"` or an inline script | the behaviour registered with `arandu.ui.define`, reading props the component wrote. The page stays at `script-src 'self'` plus one origin |
 | a global widening of the policy | `Headers` on the routes that draw the widget. Every other page keeps the default |
 | the secret key in a log line, an error or `%v` | `Config.String` and `GoString` redact it, and no error carries the request body |

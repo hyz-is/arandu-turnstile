@@ -32,7 +32,7 @@ func Policy(base middleware.ContentSecurityPolicy) middleware.ContentSecurityPol
 // same image origins -- so the pages with the widget lose nothing the rest of
 // the application allows.
 //
-// A boosted navigation is answered with HX-Redirect to the same address. The
+// A boosted navigation is answered with YPY-Redirect to the same address. The
 // policy that governs a document is the one its first load carried, and a
 // boosted link swaps the body without loading a document: a page with the
 // widget reached that way would run under the policy of the page the link was
@@ -44,9 +44,9 @@ func Headers(base middleware.ContentSecurityPolicy) hhttp.Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Vary", "HX-Boosted")
+			w.Header().Add("Vary", "YPY-Boosted")
 			if boostedNavigation(r) {
-				w.Header().Set("HX-Redirect", r.URL.RequestURI())
+				w.Header().Set("YPY-Redirect", r.URL.RequestURI())
 				w.WriteHeader(http.StatusOK)
 				return
 			}
@@ -56,11 +56,11 @@ func Headers(base middleware.ContentSecurityPolicy) hhttp.Middleware {
 	}
 }
 
-// boostedNavigation reports whether r is htmx following a boosted link: a GET
-// or HEAD with both of the headers htmx sends for one.
+// boostedNavigation reports whether r is YPY following a boosted link: a GET
+// or HEAD with both of the headers YPY sends for one.
 func boostedNavigation(r *http.Request) bool {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return false
 	}
-	return r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") == "true"
+	return r.Header.Get("YPY-Request") == "true" && r.Header.Get("YPY-Boosted") == "true"
 }

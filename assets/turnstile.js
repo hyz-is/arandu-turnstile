@@ -13,9 +13,13 @@
  * a swap brings in afterwards.
  *
  * A token is single-use. When the form around a widget sends a request with
- * htmx and the widget is still on the page afterwards -- the form was refused
- * and only its messages were swapped -- the widget is reset, so the next
- * attempt carries a new token instead of the spent one.
+ * YPY and the widget is still on the page afterwards -- the form was refused
+ * and only its messages were merged in -- the widget is reset, so the next
+ * attempt carries a new token instead of the spent one. YPY fires
+ * ypy:finally:request after every request it sent, whatever the answer was.
+ * The element the widget draws into carries ypy-preserve="children": a morph,
+ * which is what a swap does unless it names another style, would otherwise
+ * empty it, because the answer holds that element with nothing in it.
  *
  * The component writes the tag that loads this file once per widget, so a page
  * with two widgets loads it twice. The second run finds the behaviour already
@@ -99,11 +103,11 @@
 				if (!document.documentElement.contains(ctx.element)) return;
 				window.turnstile.reset(ctx.widget);
 			};
-			form.addEventListener('htmx:afterRequest', ctx.renew);
+			form.addEventListener('ypy:finally:request', ctx.renew);
 		},
 		destroyed: function (ctx) {
 			ctx.gone = true;
-			if (ctx.form && ctx.renew) ctx.form.removeEventListener('htmx:afterRequest', ctx.renew);
+			if (ctx.form && ctx.renew) ctx.form.removeEventListener('ypy:finally:request', ctx.renew);
 			if (ctx.widget !== undefined && window.turnstile) window.turnstile.remove(ctx.widget);
 		},
 	});

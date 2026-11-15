@@ -67,6 +67,16 @@ func TestTheWidgetHandsItsOptionsToTheBehaviour(t *testing.T) {
 	}
 }
 
+// A form answered with a morph must not empty the element Cloudflare draws
+// into: the answer holds that element with nothing in it.
+func TestTheElementCloudflareDrawsIntoSurvivesAMorph(t *testing.T) {
+	t.Parallel()
+	markup := string(ui.Widget(ui.WidgetProps{SiteKey: turnstile.TestSiteKey}))
+	if !regexp.MustCompile(`data-part="widget"\s+ypy-preserve="children"`).MatchString(markup) {
+		t.Errorf("the element the challenge is drawn into does not keep its children:\n%s", markup)
+	}
+}
+
 func TestTheWidgetDrawsTheRefusal(t *testing.T) {
 	t.Parallel()
 	markup := string(ui.Widget(ui.WidgetProps{
@@ -140,7 +150,7 @@ func TestTheBehaviourAgreesWithTheGoSide(t *testing.T) {
 	for _, want := range []string{
 		"arandu.ui.define('" + ui.WidgetBehavior + "'",
 		"'" + turnstile.Origin + "/turnstile/v0/api.js?render=explicit'",
-		"turnstile.reset(", "turnstile.remove(", "htmx:afterRequest",
+		"turnstile.reset(", "turnstile.remove(", "ypy:finally:request",
 	} {
 		if !strings.Contains(script, want) {
 			t.Errorf("the behaviour does not contain %q", want)
