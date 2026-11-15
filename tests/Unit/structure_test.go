@@ -343,7 +343,7 @@ func TestTheGuidesTeachALibrary(t *testing.T) {
 		".agents/skills/README.md":                  {"turnstile-package", "turnstile-release", "turnstile-vault-notes"},
 	}
 	retired := []string{
-		"turnstileModule", "k.Register(", "TurnstileService", "TurnstilePolicy", "Turnstiles(",
+		"turnstileModule", "k.Register", "WithProviders(", "TurnstileService", "TurnstilePolicy", "Turnstiles(",
 		"model:build", "vendor:publish", "/auth/login",
 	}
 	bootstrapFile := regexp.MustCompile(`bootstrap/[A-Za-z0-9_.-]+\.go`)

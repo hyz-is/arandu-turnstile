@@ -1,6 +1,6 @@
 ---
 name: turnstile-package
-description: Install, wire and use Arandu Turnstile (Cloudflare Turnstile, the anti-bot challenge) in an Arandu application. Use when the request is to "add a captcha", "add Turnstile", "protect the sign-up form from bots", "anti-robot check", "go get github.com/hyz-is/arandu-turnstile", "the widget does not appear", "Refused to load the script challenges.cloudflare.com", "Content Security Policy blocks Turnstile", "the form always says confirm that you are not a robot", "timeout-or-duplicate", "the widget works on refresh but not after clicking a link", or when a project's go.mod already requires github.com/hyz-is/arandu-turnstile. Covers the keys, the Verifier in bootstrap/app.go, the Headers middleware on the routes that draw the widget, the Widget component in the view, the Check call in the handler, the test keys, and the symptoms of each missing piece.
+description: Install, wire and use Arandu Turnstile (Cloudflare Turnstile, the anti-bot challenge) in an Arandu application. Use when the request is to "add a captcha", "add Turnstile", "protect the sign-up form from bots", "anti-robot check", "go get github.com/hyz-is/arandu-turnstile", "the widget does not appear", "Refused to load the script challenges.cloudflare.com", "Content Security Policy blocks Turnstile", "the form always says confirm that you are not a robot", "timeout-or-duplicate", "the widget works on refresh but not after clicking a link", or when a project's go.mod already requires github.com/hyz-is/arandu-turnstile. Covers the keys, the Verifier built with the application's services, the Headers middleware on the routes that draw the widget, the Widget component in the view, the Check call in the handler, the test keys, and the symptoms of each missing piece.
 license: MIT
 metadata:
   audience: app
@@ -29,9 +29,10 @@ development and test suites, use Cloudflare's published keys, which work on
 `turnstile.TestSecretKey`. A production deployment with the test secret
 accepts every submission, so they never reach production.
 
-## 2. The Verifier, in bootstrap/app.go
+## 2. The Verifier, with the application's services
 
-One for the application, built where the other collaborators are built:
+One for the application, built where the other collaborators are built,
+in `NewAppServiceProvider` (`app/Providers`):
 
 ```go
 captcha, err := turnstile.New(turnstile.Config{

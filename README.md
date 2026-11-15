@@ -32,7 +32,8 @@ For local development and tests, Cloudflare publishes keys that always pass:
 
 ## Wire it
 
-The Verifier, once, in `bootstrap/app.go`, from the application's own config:
+The Verifier, once, where the application builds its other services
+(`NewAppServiceProvider`, in `app/Providers`), from the application's own config:
 
 ```go
 captcha, err := turnstile.New(turnstile.Config{

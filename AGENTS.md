@@ -61,7 +61,7 @@ It does not read this package after it is installed either, which is why
 
 | A model reaches for | What is here instead |
 | --- | --- |
-| a `Module`, a route, a line in `k.Register` | nothing to register. `New` builds a Verifier the application keeps |
+| a `Module`, a route, a line in `WithProviders` | nothing to register. `New` builds a Verifier the application keeps |
 | middleware that verifies the token before the handler | `Check`, called by the handler. A token is spent by verifying it, so it is verified once, by the code that acts on the submission |
 | a fallback that lets the form through when Cloudflare is down | nothing. The check fails closed; a check that opens when it is slow is one an attacker turns off |
 | a copy of Cloudflare's `api.js` served from this origin | the script loaded from `https://challenges.cloudflare.com`, which Cloudflare requires: the file changes without changing its address |
