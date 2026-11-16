@@ -1,6 +1,6 @@
 ---
 name: turnstile-package
-description: Install, wire and use Arandu Turnstile (Cloudflare Turnstile, the anti-bot challenge) in an Arandu application. Use when the request is to "add a captcha", "add Turnstile", "protect the sign-up form from bots", "anti-robot check", "go get github.com/hyz-is/arandu-turnstile", "the widget does not appear", "Refused to load the script challenges.cloudflare.com", "Content Security Policy blocks Turnstile", "the form always says confirm that you are not a robot", "timeout-or-duplicate", "the widget works on refresh but not after clicking a link", or when a project's go.mod already requires github.com/hyz-is/arandu-turnstile. Covers the keys, the Verifier built with the application's services, the Headers middleware on the routes that draw the widget, the Widget component in the view, the Check call in the handler, the test keys, and the symptoms of each missing piece.
+description: Install, wire and use Arandu Turnstile (Cloudflare Turnstile, the anti-bot challenge) in an Arandu application. Use when the request is to "add a captcha", "add Turnstile", "protect the sign-up form from bots", "anti-robot check", "go get github.com/hyz-is/arandu-turnstile", "the widget does not appear", "Refused to load the script challenges.cloudflare.com", "Content Security Policy blocks Turnstile", "the form always says confirm that you are not a robot", "timeout-or-duplicate", "the widget works on refresh but not after clicking a link", "a token without a form", "Turnstile before a fetch", "challenge_unavailable", or when a project's go.mod already requires github.com/hyz-is/arandu-turnstile. Covers the keys, the Verifier built with the application's services, the Headers middleware on the routes that draw the widget, the Widget component in the view, the Check call in the handler, a token for a request that is not a form (arandu.turnstile.token), the test keys, and the symptoms of each missing piece.
 license: MIT
 metadata:
   audience: app
@@ -129,13 +129,41 @@ In a test, build the Verifier with `turnstile.TestSecretKey` and post
 a suite that must stay offline points `Config.Endpoint` and `Config.Client` at
 an `httptest.NewTLSServer`.
 
+## 6. A token without a form
+
+A script that has to prove a person is in the browser before a request of its
+own (a `fetch` that starts a payment step) asks the client script for a token
+and sends it with the request. No component and no `arandu.ui`:
+
+```html
+<script src="{{ view.Asset(turnstile.ScriptAsset) }}" defer></script>
+```
+
+```js
+arandu.turnstile.token({ sitekey: siteKey, action: 'card-tokenization' }).then(function (token) {
+	return fetch(url, { method: 'POST', body: JSON.stringify({ turnstile_token: token }) });
+});
+```
+
+The page is served through `turnstile.Headers` (or its policy has
+`turnstile.Origin` in `script-src` and `frame-src`). The handler calls
+`captcha.Verify` with `turnstile.Challenge{Token, RemoteIP, Action}` with the
+same action as the script, and answers 403 for `ErrMissingToken` and
+`ErrRejected`, 503 for `ErrUnavailable` and `ErrMisconfigured`. A token proves
+one request: every call solves a new one. `arandu.turnstile.prepare(options)`
+solves ahead and keeps the token fresh until `.token()` takes it. A rejection
+carries `error.code`: `challenge_unavailable`, `challenge_failed`,
+`challenge_unconfigured`, `challenge_cancelled` or `challenge_spent`. Do not
+write a second loader for Cloudflare's script in the application.
+
 ## Symptoms
 
 | what happens | the missing piece |
 | --- | --- |
-| the console says `arandu-turnstile: https://challenges.cloudflare.com/... did not load` | the route of the page is not wrapped in `turnstile.Headers` |
+| the console says `turnstile: https://challenges.cloudflare.com/... did not load`, or a token call rejects with `challenge_unavailable` | the route of the page is not wrapped in `turnstile.Headers` |
 | it works after a refresh and not after clicking a link | the same: the page was swapped in by a boosted link and kept the old policy |
-| `arandu.ui is not on the page` | the layout does not load `ui.js` before the component's script |
+| `arandu.ui is not on the page` | the layout does not load `ui.js` before the component's script (a page that only asks for tokens does not need it) |
+| `arandu.turnstile` is undefined | the page does not load the script with `view.Asset(turnstile.ScriptAsset)`, or the tag runs before it is parsed |
 | the widget space is empty and nothing is in the console | `SiteKey` is empty in the page data |
 | every submission comes back with the Rejected message | the handler reads another field than `turnstile.FieldName`, the `Action` differs between view and handler, or the widget is outside the `<form>` |
 | the second attempt after a refusal is refused as spent (`timeout-or-duplicate`) | the form was posted without YPY and the page was not drawn again; with YPY the widget renews itself |

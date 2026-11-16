@@ -333,11 +333,13 @@ func TestTheGuidesTeachALibrary(t *testing.T) {
 		"README.md": {
 			"go get github.com/hyz-is/arandu-turnstile", "turnstile.New(", "turnstile.Headers(",
 			"turnstile.Widget(", "captcha.Check(", "turnstile.FieldName", "aru view:build",
+			"arandu.turnstile.token(", "arandu.turnstile.prepare(",
 		},
 		"AGENTS.md": {"view.RegisterAsset", "TestThePackageIsALibrary", "aru view:build"},
 		".agents/skills/turnstile-package/SKILL.md": {
 			"go get github.com/hyz-is/arandu-turnstile", "turnstile.New(", "turnstile.Headers(",
 			"turnstile.Widget(", "captcha.Check(", "turnstile.TestSiteKey",
+			"arandu.turnstile.token(", "captcha.Verify",
 		},
 		".agents/skills/turnstile-release/SKILL.md": {"TestTheModuleRequiresNothingButHesapeAndKyse", "aru view:build"},
 		".agents/skills/README.md":                  {"turnstile-package", "turnstile-release", "turnstile-vault-notes"},

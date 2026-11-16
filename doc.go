@@ -32,6 +32,12 @@
 //		return err
 //	}
 //
+// A page with no form gets a token from the same script, in the browser, and
+// sends it with a request of its own; the handler checks it with Verify:
+//
+//	arandu.turnstile.token({ sitekey: siteKey, action: "card-tokenization" })
+//	    .then(function (token) { /* send it with the request */ })
+//
 // A rejected token comes back as validation.Errors under FieldName, so the
 // form is drawn again with the message beside the widget, exactly as a field
 // that failed its rule would be.

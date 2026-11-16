@@ -1,8 +1,10 @@
 # Working on Arandu Turnstile
 
-This is an Arandu package that puts Cloudflare Turnstile in front of a form:
-the `Widget` component in `components/`, the client behaviour it loads, the
-Content-Security-Policy its page needs, and the server-side verification. It is
+This is an Arandu package that puts Cloudflare Turnstile in front of a form or
+of a request a script sends: the `Widget` component in `components/`, the client
+script it loads (the widget behaviour and `arandu.turnstile.token` for a page
+with no form), the Content-Security-Policy its page needs, and the server-side
+verification. It is
 a Go module somebody `go get`s and imports.
 
 It began as the package skeleton, configured as `hyz-is/turnstile`, and the
@@ -70,6 +72,7 @@ It does not read this package after it is installed either, which is why
 | a global widening of the policy | `Headers` on the routes that draw the widget. Every other page keeps the default |
 | the secret key in a log line, an error or `%v` | `Config.String` and `GoString` redact it, and no error carries the request body |
 | an `init` that does more than register the script | `view.RegisterAsset` and nothing else. `TestThePackageIsALibrary` holds it |
+| a second loader for Cloudflare's script, or a `turnstile.render` call, in an application that needs a token without a form | `arandu.turnstile.token` and `prepare` in the same script. A need the API does not cover is added to `assets/turnstile.js` and to `tests/Unit/testdata/token_harness.js`, never worked around in the application |
 | an import of the framework | the standard library, `hesape/http`, `hesape/http/middleware`, `hesape/validation`, `hesape/view` and `kyse/components`. `TestThePackageIsALibrary` holds the list |
 
 ## The four properties
