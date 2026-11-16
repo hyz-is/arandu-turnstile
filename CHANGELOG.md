@@ -10,6 +10,53 @@ a release is corrected by another release and never by moving a tag.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-16
+
+### Added
+
+- `arandu.turnstile.token(options)`, in the client script that already draws
+  `Widget`: a page with no form asks for a Turnstile token and sends it with a
+  request of its own (a `fetch` that starts a payment step). It answers with a
+  Promise of the token, draws nothing unless a person has to act
+  (`appearance: "interaction-only"`), writes no hidden input, removes its widget
+  as soon as the token is read, and needs neither the component nor
+  `arandu.ui`. A rejection is an `Error` whose `code` is
+  `challenge_unavailable`, `challenge_failed`, `challenge_unconfigured`,
+  `challenge_cancelled` or `challenge_spent`, and whose `reason` says why.
+- `arandu.turnstile.prepare(options)`, for a token that is asked for before the
+  request is made: it solves now and hands the token over with `token()`. A
+  token that expires before it is taken is solved again by the widget, so
+  `token()` never answers with an expired one. `cancel()` drops it.
+- The API works on a strict Content-Security-Policy: the script is the
+  application's own, loaded with `view.Asset(turnstile.ScriptAsset)`, Cloudflare's
+  is the one origin `Policy` allows, and nothing is inline. The README shows the
+  server half for a request that is not a form: `Verify` with the action and the
+  address, and the status each error maps to.
+
+### Changed
+
+- The script defines `arandu.turnstile` whether or not `arandu.ui` is on the
+  page. Without `arandu.ui` the widget behaviour is not registered, as before,
+  and the console says so only when the page draws a widget; a page that only
+  asks for tokens is told nothing.
+
+## [0.4.1] - 2026-11-16
+
+### Changed
+
+- Requires Hesape v0.109.0 and Kyse v0.53.1. No code changed.
+
+## [0.4.0] - 2026-11-15
+
+### Changed
+
+- The widget is served to YPY pages: `Headers` recognises a boosted navigation
+  by `YPY-Request` and `YPY-Boosted` and answers it with `YPY-Redirect`, the
+  behaviour renews the token on `ypy:finally:request`, and the element
+  Cloudflare draws into keeps its children through a morph. `UPGRADE.md` has the
+  three consequences. Requires the Hesape and Kyse releases that draw views with
+  YPY.
+
 ## [0.3.0] - 2026-11-14
 
 ### Changed

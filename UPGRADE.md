@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## v0.5.0
+
+Nothing to change in the code: no exported Go name changes. A page that has no
+form and wrote its own script around Cloudflare's `turnstile.render` can replace
+it with `arandu.turnstile.token({ sitekey, action })`, which answers with a
+Promise of the token; the README, "Without a form", has the options and the
+errors. The page loads the script with `view.Asset(turnstile.ScriptAsset)`, and
+its Content-Security-Policy is `turnstile.Policy`'s or carries the same two
+directives.
+
+## v0.4.1
+
+Nothing to change. It raises Hesape to v0.109.0 and Kyse to v0.53.1.
+
+## v0.4.0
+
 Nothing to change in the code: no exported name changes. The page it serves is
 a YPY page, and three things follow from that.
 
